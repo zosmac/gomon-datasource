@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "datasource",
+  "name": "gomon-datasource",
+  "id": "zosmac-gomon-datasource",
+  "metrics": true,
+  "backend": true,
+  "executable": "gomon-datasource",
+  "info": {
+    "description": "Gomon Process Nodegraph Data Source",
+    "author": {
+      "name": "The Gomon Project",
+      "url": "https://github.com/zosmac"
+    },
+    "keywords": [
+      "gomon process nodegraph"
+    ],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/zosmac/gomon-datasource"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/zosmac/gomon-datasource/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=8.0.0",
+    "plugins": []
+  }
+}

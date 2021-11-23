@@ -1,0 +1,9 @@
+LICENSE
+pkg/version.go
+settings.json
+README.html
+node_modules/
+dist/
+coverage/
+*.log
+yarn.lock

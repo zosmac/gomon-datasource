@@ -1,0 +1,194 @@
+{
+   "dashboard" : {
+      "annotations" : {
+         "list" : [
+            {
+               "builtIn" : 1,
+               "datasource" : "-- Grafana --",
+               "enable" : true,
+               "hide" : true,
+               "iconColor" : "rgba(0, 211, 255, 1)",
+               "name" : "Annotations & Alerts",
+               "type" : "dashboard"
+            }
+         ]
+      },
+      "editable" : true,
+      "gnetId" : null,
+      "graphTooltip" : 0,
+      "id" : null,
+      "links" : [],
+      "uid": null,
+      "panels" : [
+         {
+            "datasource" : "gomon-datasource",
+            "fieldConfig" : {
+               "defaults" : {},
+               "overrides" : []
+            },
+            "gridPos" : {
+               "h" : 26,
+               "w" : 15,
+               "x" : 0,
+               "y" : 0
+            },
+            "id" : 2,
+            "pluginVersion" : "8.2.5",
+            "targets" : [
+               {
+                  "connected" : true,
+                  "refId" : "A"
+               }
+            ],
+            "timeFrom" : null,
+            "timeShift" : null,
+            "title" : "Process Nodegraph",
+            "transparent" : true,
+            "type" : "nodeGraph"
+         },
+         {
+            "datasource" : "-- Dashboard --",
+            "fieldConfig" : {
+               "defaults" : {
+                  "color" : {
+                     "mode" : "thresholds"
+                  },
+                  "custom" : {
+                     "align" : null,
+                     "filterable" : true
+                  },
+                  "mappings" : [],
+                  "thresholds" : {
+                     "mode" : "absolute",
+                     "steps" : [
+                        {
+                           "color" : "green",
+                           "value" : null
+                        },
+                        {
+                           "color" : "red",
+                           "value" : 80
+                        }
+                     ]
+                  }
+               },
+               "overrides" : [
+                  {
+                     "matcher" : {
+                        "id" : "byName",
+                        "options" : "Type"
+                     },
+                     "properties" : [
+                        {
+                           "id" : "custom.width",
+                           "value" : 125
+                        }
+                     ]
+                  },
+                  {
+                     "matcher" : {
+                        "id" : "byName",
+                        "options" : "Source ID"
+                     },
+                     "properties" : [
+                        {
+                           "id" : "custom.width",
+                           "value" : 106
+                        }
+                     ]
+                  },
+                  {
+                     "matcher" : {
+                        "id" : "byName",
+                        "options" : "Target ID"
+                     },
+                     "properties" : [
+                        {
+                           "id" : "custom.width",
+                           "value" : 109
+                        }
+                     ]
+                  },
+                  {
+                     "matcher" : {
+                        "id" : "byName",
+                        "options" : "ID"
+                     },
+                     "properties" : [
+                        {
+                           "id" : "custom.width",
+                           "value" : 102
+                        }
+                     ]
+                  }
+               ]
+            },
+            "gridPos" : {
+               "h" : 24,
+               "w" : 9,
+               "x" : 15,
+               "y" : 0
+            },
+            "id" : 4,
+            "options" : {
+               "frameIndex" : 0,
+               "showHeader" : true,
+               "sortBy" : [
+                  {
+                     "desc" : false,
+                     "displayName" : "Relation"
+                  }
+               ]
+            },
+            "pluginVersion" : "8.2.5",
+            "targets" : [
+               {
+                  "connected" : true,
+                  "panelId" : 2,
+                  "refId" : "A"
+               }
+            ],
+            "timeFrom" : null,
+            "timeShift" : null,
+            "title" : "Nodes/Edges List",
+            "transparent" : true,
+            "type" : "table"
+         }
+      ],
+      "schemaVersion" : 27,
+      "style" : "dark",
+      "tags" : [],
+      "templating" : {
+         "list" : []
+      },
+      "time" : {
+         "from" : "now-1h",
+         "to" : "now"
+      },
+      "timepicker" : {},
+      "timezone" : "",
+      "title" : "Gomon Process Nodegraph",
+      "version" : 0
+   },
+   "meta" : {
+      "canAdmin" : true,
+      "canEdit" : true,
+      "canSave" : true,
+      "canStar" : true,
+      "expires" : "0001-01-01T00:00:00Z",
+      "folderId" : 0,
+      "folderTitle" : "General",
+      "folderUid" : "",
+      "folderUrl" : "",
+      "hasAcl" : false,
+      "isFolder" : false,
+      "provisioned" : false,
+      "provisionedExternalId" : "",
+      "slug" : "gomon-process-nodegraph",
+      "type" : "db",
+      "version" : 0
+   },
+
+   "message" : "Initialize gomon data source dashboard",
+   "overwrite" : true
+}
