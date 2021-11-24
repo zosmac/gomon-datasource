@@ -2,7 +2,7 @@
 # Copyright © 2021 The Gomon Project.
 
 # define Gomon version value
-version="0.0.0"
+version="1.0.0"
 
 # Create LICENSE file
 
