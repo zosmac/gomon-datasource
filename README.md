@@ -63,8 +63,8 @@ mage -v [backend]
 
 The backend’s query of process connections requires root authority. Therefore, the backend module must be owned by root with its setuid permission set:
 ```zsh
-sudo chown 0:0 $GRAFANA_DIR/data/plugins/gomon-datasource/gomon-datasource_$(go env GOOS)_$(go env GOARCH)
-sudo chmod u+s $GRAFANA_DIR/data/plugins/gomon-datasource/gomon-datasource_$(go env GOOS)_$(go env GOARCH)
+sudo chown 0:0 dist/gomon-datasource_$(go env GOOS)_$(go env GOARCH)
+sudo chmod u+s dist/gomon-datasource_$(go env GOOS)_$(go env GOARCH)
 ```
 
 ## Install the Gomon Data Source Plugin
