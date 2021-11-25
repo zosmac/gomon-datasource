@@ -117,7 +117,7 @@ func lsofCommand(ready chan<- struct{}) {
 
 	ready <- struct{}{}
 
-	eps := map[Pid]Connections{}
+	epm := map[Pid]Connections{}
 
 	sc := bufio.NewScanner(stdout)
 	for sc.Scan() {
@@ -130,7 +130,8 @@ func lsofCommand(ready chan<- struct{}) {
 		}
 		if trailer := match[rgxgroups[groupTrailer]]; trailer != "" {
 			epLock.Lock()
-			endpoints = eps
+			epMap = epm
+			epm = map[Pid]Connections{}
 			epLock.Unlock()
 			continue
 		}
@@ -210,7 +211,7 @@ func lsofCommand(ready chan<- struct{}) {
 			"peer", peer,
 		)
 
-		eps[Pid(pid)] = append(eps[Pid(pid)], ep)
+		epm[Pid(pid)] = append(epm[Pid(pid)], ep)
 	}
 
 	log.DefaultLogger.Error("Scanning output failed",

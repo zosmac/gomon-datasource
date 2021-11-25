@@ -72,9 +72,6 @@ var (
       info, _ := os.Stat(executable)
       return info.ModTime().UTC().Format(\"2006-01-02 15:04:05 UTC\")
    }()
-   
-	// srcpath to strip from source file path in log messages.
-	srcpath = \"$srcpath\"
 
 	// vmmp is \"Version, Major, Minor, Patch\"
 	vmmp = \"v$version-`git rev-parse --short=12 HEAD`\"

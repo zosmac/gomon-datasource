@@ -76,8 +76,8 @@ var (
 	oldPids map[Pid]struct{}
 
 	// endpoints of processes periodically populated by lsof.
-	endpoints = map[Pid]Connections{}
-	epLock    sync.RWMutex
+	epMap  = map[Pid]Connections{}
+	epLock sync.Mutex
 )
 
 type (
@@ -177,9 +177,13 @@ func buildTable() processTable {
 		panic("could not build process table")
 	}
 
-	epLock.RLock()
-	eps := endpoints
-	epLock.RUnlock()
+	var epm map[Pid]Connections
+	epLock.Lock()
+	if epMap != nil {
+		epm = epMap
+		epMap = nil
+	}
+	epLock.Unlock()
 
 	pt := make(map[Pid]*process, len(pids))
 	for _, pid := range pids {
@@ -187,7 +191,7 @@ func buildTable() processTable {
 		pt[pid] = &process{
 			Id:          id,
 			Props:       props,
-			Connections: eps[pid],
+			Connections: epm[pid],
 		}
 	}
 

@@ -14,8 +14,9 @@ import (
 	"strings"
 )
 
+// hostCommand builds a host specific command line for lsof.
 func hostCommand() *exec.Cmd {
-	cmdline := strings.Fields(fmt.Sprintf("lsof -S2 -X -r%dm====%%T====", 10))
+	cmdline := strings.Fields(fmt.Sprintf("lsof -X -r%dm====%%T====", 10))
 	cmd := exec.Command(cmdline[0], cmdline[1:]...)
 
 	// ensure that no open descriptors propagate to child
