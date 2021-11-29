@@ -9,26 +9,28 @@
                "hide" : true,
                "iconColor" : "rgba(0, 211, 255, 1)",
                "name" : "Annotations & Alerts",
+               "target" : {
+                  "limit" : 100,
+                  "matchAny" : false,
+                  "tags" : [],
+                  "type" : "dashboard"
+               },
                "type" : "dashboard"
             }
          ]
       },
       "editable" : true,
-      "gnetId" : null,
+      "fiscalYearStartMonth" : 0,
       "graphTooltip" : 0,
       "id" : null,
       "links" : [],
-      "uid": null,
+      "liveNow" : false,
       "panels" : [
          {
             "datasource" : "gomon-datasource",
-            "fieldConfig" : {
-               "defaults" : {},
-               "overrides" : []
-            },
             "gridPos" : {
-               "h" : 26,
-               "w" : 15,
+               "h" : 24,
+               "w" : 16,
                "x" : 0,
                "y" : 0
             },
@@ -40,21 +42,21 @@
                   "refId" : "A"
                }
             ],
-            "timeFrom" : null,
-            "timeShift" : null,
             "title" : "Process Nodegraph",
-            "transparent" : true,
             "type" : "nodeGraph"
          },
          {
-            "datasource" : "-- Dashboard --",
+            "datasource" : {
+               "type" : "datasource",
+               "uid" : "-- Dashboard --"
+            },
             "fieldConfig" : {
                "defaults" : {
                   "color" : {
                      "mode" : "thresholds"
                   },
                   "custom" : {
-                     "align" : null,
+                     "displayMode" : "auto",
                      "filterable" : true
                   },
                   "mappings" : [],
@@ -64,10 +66,6 @@
                         {
                            "color" : "green",
                            "value" : null
-                        },
-                        {
-                           "color" : "red",
-                           "value" : 80
                         }
                      ]
                   }
@@ -81,7 +79,7 @@
                      "properties" : [
                         {
                            "id" : "custom.width",
-                           "value" : 125
+                           "value" : 80
                         }
                      ]
                   },
@@ -93,7 +91,7 @@
                      "properties" : [
                         {
                            "id" : "custom.width",
-                           "value" : 106
+                           "value" : 100
                         }
                      ]
                   },
@@ -105,7 +103,7 @@
                      "properties" : [
                         {
                            "id" : "custom.width",
-                           "value" : 109
+                           "value" : 100
                         }
                      ]
                   },
@@ -117,7 +115,7 @@
                      "properties" : [
                         {
                            "id" : "custom.width",
-                           "value" : 102
+                           "value" : 100
                         }
                      ]
                   }
@@ -125,13 +123,20 @@
             },
             "gridPos" : {
                "h" : 24,
-               "w" : 9,
-               "x" : 15,
+               "w" : 8,
+               "x" : 16,
                "y" : 0
             },
             "id" : 4,
             "options" : {
-               "frameIndex" : 0,
+               "footer" : {
+                  "fields" : "",
+                  "reducer" : [
+                     "sum"
+                  ],
+                  "show" : false
+               },
+               "frameIndex" : 1,
                "showHeader" : true,
                "sortBy" : [
                   {
@@ -148,15 +153,11 @@
                   "refId" : "A"
                }
             ],
-            "timeFrom" : null,
-            "timeShift" : null,
             "title" : "Nodes/Edges List",
-            "transparent" : true,
             "type" : "table"
          }
       ],
-      "schemaVersion" : 27,
-      "style" : "dark",
+      "style" : "light",
       "tags" : [],
       "templating" : {
          "list" : []
@@ -168,14 +169,14 @@
       "timepicker" : {},
       "timezone" : "",
       "title" : "Gomon Process Nodegraph",
-      "version" : 0
+      "version" : 0,
+      "weekStart" : ""
    },
    "meta" : {
       "canAdmin" : true,
       "canEdit" : true,
       "canSave" : true,
       "canStar" : true,
-      "expires" : "0001-01-01T00:00:00Z",
       "folderId" : 0,
       "folderTitle" : "General",
       "folderUid" : "",

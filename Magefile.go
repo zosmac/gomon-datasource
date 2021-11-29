@@ -1,5 +1,4 @@
 //go:build mage
-// +build mage
 
 package main
 
@@ -20,7 +19,21 @@ var (
 
 	plugin = "gomon-datasource"
 
-	backend = fmt.Sprintf("dist/%s_%s_%s", plugin, runtime.GOOS, runtime.GOARCH)
+	goos = func() string {
+		if goos, ok := os.LookupEnv("GOOS"); ok {
+			return goos
+		}
+		return runtime.GOOS
+	}()
+
+	goarch = func() string {
+		if goarch, ok := os.LookupEnv("GOARCH"); ok {
+			return goarch
+		}
+		return runtime.GOARCH
+	}()
+
+	backend = fmt.Sprintf("dist/%s_%s_%s", plugin, goos, goarch)
 
 	homeDir, _ = os.UserHomeDir()
 
