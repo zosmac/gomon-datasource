@@ -33,9 +33,9 @@ var (
 		return runtime.GOARCH
 	}()
 
+	// getExecutableName in github.com/grafana/grafana-plugin-sdk-go/build/common.go
+	// expects the executable name to be appended with "_$GOOS_$GOARCH"
 	backend = fmt.Sprintf("dist/%s_%s_%s", plugin, goos, goarch)
-
-	homeDir, _ = os.UserHomeDir()
 
 	grafanaDir = func() string {
 		if dir, ok := os.LookupEnv("GRAFANA_DIR"); ok {
@@ -70,7 +70,7 @@ var (
 
 // Upgrade refreshes dependencies.
 func Upgrade() error {
-	if err := command("yarn", "", "install"); err != nil {
+	if err := command("yarn", "", "install", "--fix", "--latest", "--force"); err != nil {
 		return err
 	}
 
@@ -78,11 +78,16 @@ func Upgrade() error {
 		return err
 	}
 
-	if err := command("rm", "", "-rf", "node_modules/@grafana/data/node_modules"); err != nil {
+	if err := command("go", "", "mod", "tidy", "-v"); err != nil {
 		return err
 	}
 
-	if err := command("go", "", "mod", "tidy", "-v"); err != nil {
+	return nil
+}
+
+// Frontend builds the web frontend of the data source.
+func Frontend() error {
+	if err := command("yarn", "", "build"); err != nil {
 		return err
 	}
 
@@ -96,15 +101,6 @@ func Backend() error {
 	}
 
 	if err := command("go", "", "build", "-v", "-o", backend, "./pkg"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Frontend builds the web frontend of the data source.
-func Frontend() error {
-	if err := command("yarn", "", "build"); err != nil {
 		return err
 	}
 

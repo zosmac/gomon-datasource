@@ -13,10 +13,10 @@
   "author": "zosmac@github.com",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@grafana/data": "8.2.5",
-    "@grafana/runtime": "8.2.5",
-    "@grafana/toolkit": "8.2.5",
-    "@grafana/ui": "8.2.5",
+    "@grafana/data": "8.3.0",
+    "@grafana/runtime": "8.3.0",
+    "@grafana/toolkit": "8.3.0",
+    "@grafana/ui": "8.3.0",
     "@types/lodash": "4.14.177"
   },
   "resolutions": {

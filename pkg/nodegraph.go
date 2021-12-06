@@ -215,25 +215,27 @@ func frames() (nodes *data.Frame, edges *data.Frame) {
 		Path:        "id",
 	}
 	nodes.Fields[1].Config = &data.FieldConfig{
+		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "red"},
 		DisplayName: "Host/Command/File",
 		Path:        "command",
 	}
 	nodes.Fields[2].Config = &data.FieldConfig{
+		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "blue"},
 		DisplayName: "Host/Command/File",
 		Path:        "command",
 	}
 	nodes.Fields[3].Config = &data.FieldConfig{
-		Color:       map[string]interface{}{"fixedColor": "red"},
+		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "red"},
 		DisplayName: "Host",
 		Path:        "host",
 	}
 	nodes.Fields[4].Config = &data.FieldConfig{
-		Color:       map[string]interface{}{"fixedColor": "green"},
+		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "blue"},
 		DisplayName: "Process",
 		Path:        "process",
 	}
 	nodes.Fields[5].Config = &data.FieldConfig{
-		Color:       map[string]interface{}{"fixedColor": "blue"},
+		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "yellow"},
 		DisplayName: "File",
 		Path:        "file",
 	}
