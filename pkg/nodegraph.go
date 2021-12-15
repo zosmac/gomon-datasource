@@ -67,21 +67,21 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 	em := map[string][]interface{}{}
 
 	i := Pid(-1)
-	j := Pid(1)
 	for _, conn := range conns {
 		if conn.self.pid == -1 { // external network connections (self.pid/fd = -1/-1)
+			host, port, _ := net.SplitHostPort(conn.self.name)
 			self := conn.ftype + ":" + conn.self.name
-			peer := fmt.Sprintf("%s[%d]", filepath.Base(conn.peer.command), conn.peer.pid)
+			nm[self] = append([]interface{}{host, ":" + port}, hostArc()...)
 
-			nm[self] = append([]interface{}{self, conn.self.command}, hostArc()...)
-			nm[peer] = append([]interface{}{peer, ""}, procArc()...)
+			pc := []interface{}{filepath.Base(pt[conn.peer.pid].Exec), fmt.Sprintf("[%d]", conn.peer.pid)}
+			peer := fmt.Sprintf("%s%s", pc...)
+			nm[peer] = append(pc, procArc()...)
 
-			host, _, _ := net.SplitHostPort(conn.peer.name)
-
-			em[fmt.Sprintf("%s->%s:%d", self, peer, conn.peer.fd)] = []interface{}{
+			local, _, _ := net.SplitHostPort(conn.peer.name)
+			em[fmt.Sprintf("%s->%d", self, conn.peer.pid)] = []interface{}{
 				self,
 				peer,
-				interfaces[host],
+				interfaces[local],
 				conn.peer.name,
 			}
 
@@ -93,7 +93,7 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 			}
 			pt[i] = &process{
 				Id: id{
-					Name: conn.ftype + ":" + conn.self.name,
+					Name: self,
 					Pid:  i,
 				},
 				Props: Props{
@@ -102,61 +102,41 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 			}
 			pt[pid].Ppid = i
 			i--
-		} else if conn.peer.pid == math.MaxInt32 { // peer is file
-			if conn.self.pid > 1 && qm.Files && (qm.Daemons || pt[conn.self.pid].Ppid > 1) {
-				self := fmt.Sprintf("%s[%d]", filepath.Base(conn.self.command), conn.self.pid)
-				peer := conn.peer.name
-
-				nm[self] = append([]interface{}{self, ""}, procArc()...)
-				nm[peer] = append([]interface{}{peer, ""}, fileArc()...)
-
-				dir := filepath.Dir(conn.peer.name) + string(filepath.Separator)
-				em[fmt.Sprintf("%d:%d->%s", conn.self.pid, conn.self.fd, conn.peer.name)] = []interface{}{
-					self,
-					peer,
-					filepath.Dir(dir),
-					filepath.Base(dir),
-				}
-
-				// create pseudo process to incorporate file node into process tree
-				pt[math.MaxInt32+j] = &process{
-					Id: id{
-						Name: conn.peer.name,
-						Pid:  math.MaxInt32 + j,
-					},
-					Props: Props{
-						Ppid: conn.self.pid,
-					},
-				}
-				j++
-			}
+		} else if conn.peer.pid == math.MaxInt32 {
 		} else if conn.self.pid == 0 { // ignore kernel
-			continue
 		} else if conn.self.pid == 1 {
 			if qm.Daemons {
-				peer := fmt.Sprintf("%s[%d]", filepath.Base(conn.peer.command), conn.peer.pid)
-				nm[peer] = append([]interface{}{peer, ""}, procArc()...)
+				pc := []interface{}{filepath.Base(pt[conn.peer.pid].Exec), fmt.Sprintf("[%d]", conn.peer.pid)}
+				peer := fmt.Sprintf("%s%s", pc...)
+				nm[peer] = append(pc, procArc()...)
 			}
 		} else if conn.peer.pid == 1 {
 			if qm.Daemons {
-				self := fmt.Sprintf("%s[%d]", filepath.Base(conn.self.command), conn.self.pid)
-				nm[self] = append([]interface{}{self, ""}, procArc()...)
+				sc := []interface{}{filepath.Base(pt[conn.self.pid].Exec), fmt.Sprintf("[%d]", conn.self.pid)}
+				self := fmt.Sprintf("%s%s", sc...)
+				nm[self] = append(sc, procArc()...)
 			}
 		} else { // peer is process
 			if !qm.Kernel && conn.peer.pid == 0 {
 				continue
 			}
-			if !qm.Syslog && conn.ftype == "UNIX" && strings.HasSuffix(conn.name, filepath.Join("var", "run", "syslog")) {
+			if !qm.Syslog && conn.ftype == "unix" && strings.HasSuffix(conn.name, filepath.Join("var", "run", "syslog")) {
 				continue
 			}
 
-			self := fmt.Sprintf("%s[%d]", filepath.Base(conn.self.command), conn.self.pid)
-			peer := fmt.Sprintf("%s[%d]", filepath.Base(conn.peer.command), conn.peer.pid)
+			sc := []interface{}{filepath.Base(pt[conn.self.pid].Exec), fmt.Sprintf("[%d]", conn.self.pid)}
+			self := fmt.Sprintf("%s%s", sc...)
+			nm[self] = append(sc, procArc()...)
 
-			nm[self] = append([]interface{}{self, ""}, procArc()...)
-			nm[peer] = append([]interface{}{peer, ""}, procArc()...)
+			name := "kernel"
+			if conn.peer.pid != 0 {
+				name = filepath.Base(pt[conn.peer.pid].Exec)
+			}
+			pc := []interface{}{name, fmt.Sprintf("[%d]", conn.peer.pid)}
+			peer := fmt.Sprintf("%s%s", pc...)
+			nm[peer] = append(pc, procArc()...)
 
-			em[fmt.Sprintf("%d:%d->%d:%d", conn.self.pid, conn.self.fd, conn.peer.pid, conn.peer.fd)] = []interface{}{
+			em[fmt.Sprintf("%d->%d", conn.self.pid, conn.peer.pid)] = []interface{}{
 				self,
 				peer,
 				conn.ftype,
@@ -165,10 +145,64 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 		}
 	}
 
+	if qm.Files {
+		j := Pid(1)
+		for _, conn := range conns {
+			if conn.peer.pid == math.MaxInt32 { // peer is file
+				sc := []interface{}{filepath.Base(pt[conn.self.pid].Exec), fmt.Sprintf("[%d]", conn.self.pid)}
+				self := fmt.Sprintf("%s%s", sc...)
+				if _, ok := nm[self]; !ok {
+					continue
+				}
+
+				log.DefaultLogger.Debug("FILE NAME",
+					"pid", conn.self.pid,
+					"name", conn.name,
+				)
+
+				peer := conn.name
+				nm[peer] = append([]interface{}{filepath.Dir(peer), filepath.Base(peer)}, fileArc()...)
+
+				em[fmt.Sprintf("%d->%s", conn.self.pid, conn.name)] = []interface{}{
+					self,
+					peer,
+					conn.ftype,
+					pt[conn.self.pid].Exec,
+				}
+
+				// create pseudo process to incorporate file node into process tree
+				pt[math.MaxInt32+j] = &process{
+					Id: id{
+						Name: conn.name,
+						Pid:  math.MaxInt32 + j,
+					},
+					Props: Props{
+						Ppid: conn.self.pid,
+					},
+				}
+				j++
+			}
+		}
+	}
+
 	nodes.Meta.Stats[0].Value = float64(len(nm))
 	edges.Meta.Stats[0].Value = float64(len(em))
 
-	for pid, p := range pt {
+	// pids := make([]Pid, len(pt))
+	// i = 0
+	// for pid := range pt {
+	// 	pids[i] = pid
+	// 	i++
+	// }
+
+	// sort.Slice(pids, func(i, j int) bool {
+	// 	return pids[i] < pids[j]
+	// })
+
+	// for _, pid := range pids {
+	// for pid, p := range pt {
+	for _, pid := range flatTree(buildTree(pt), 0) {
+		p := pt[pid]
 		var id string
 		if pid < 0 || pid >= math.MaxInt32 { // host or file
 			id = p.Id.Name
@@ -179,6 +213,7 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 		}
 		if values, ok := nm[id]; ok {
 			log.DefaultLogger.Debug("Peer node found",
+				"pid", pid,
 				"node", id,
 			)
 			nodes.AppendRow(append([]interface{}{id}, values...)...)

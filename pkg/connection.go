@@ -36,6 +36,11 @@ var (
 					for _, addr := range addrs {
 						if ip, _, err := net.ParseCIDR(addr.String()); err == nil {
 							im[ip.String()] = ni.Name
+							if hosts, err := net.LookupAddr(ip.String()); err == nil {
+								for _, host := range hosts {
+									im[host] = ni.Name
+								}
+							}
 						}
 					}
 				}
@@ -43,21 +48,26 @@ var (
 					for _, addr := range addrs {
 						if ip, _, err := net.ParseCIDR(addr.String()); err == nil {
 							im[ip.String()] = ni.Name
+							if hosts, err := net.LookupAddr(ip.String()); err == nil {
+								for _, host := range hosts {
+									im[host] = ni.Name
+								}
+							}
 						}
 					}
 				}
 			}
 		}
+		log.DefaultLogger.Info("interfaces",
+			"interfaces", im)
 		return im
 	}()
 )
 
 type (
 	endpoint struct {
-		pid     Pid
-		fd      int
-		command string
-		name    string
+		name string
+		pid  Pid
 	}
 
 	connection struct {
@@ -104,64 +114,49 @@ func connections(pt processTable) []connection {
 	// determine all inter- and intra- connections for processes
 	for pid, p := range pt {
 		ppid := p.Ppid
-		pp := pt[ppid]
 		connm[[4]int{int(ppid), -1, int(pid), -1}] = connection{
 			ftype: "parent:" + strconv.Itoa(int(ppid)), // set for edge tooltip
 			name:  "child:" + strconv.Itoa(int(pid)),
 			self: endpoint{
-				pid:     ppid,
-				fd:      -1,
-				command: pp.Exec,
-				name:    "parent",
+				pid: ppid,
 			},
 			peer: endpoint{
-				pid:     pid,
-				fd:      -1,
-				command: p.Exec,
-				name:    "child",
+				pid: pid,
 			},
 		}
 
 		for _, conn := range p.Connections {
 			fd := conn.Descriptor
-			self := endpoint{
-				pid:     pid,
-				fd:      fd,
-				command: p.Exec,
-				name:    conn.Self,
-			}
-
 			switch conn.Type {
 			case "NUL": // ignore /dev/null connection endpoints
 			case "REG", "PSXSHM":
 				connm[[4]int{int(pid), int(fd), math.MaxInt32, 0}] = connection{
 					ftype: conn.Type,
 					name:  conn.Name,
-					self:  self,
+					self: endpoint{
+						pid: pid,
+					},
 					peer: endpoint{
-						pid:  math.MaxInt32,
-						name: conn.Name,
+						pid: math.MaxInt32,
 					},
 				}
 			case "systm":
 				connm[[4]int{int(pid), int(fd), 0, 0}] = connection{
 					ftype: conn.Type,
 					name:  conn.Name,
-
-					self: self,
-					peer: endpoint{
-						pid:     0,
-						command: conn.Peer,
-						name:    conn.Name,
+					self: endpoint{
+						pid: pid,
 					},
 				}
 			case "FIFO", "PIPE", "TCP", "UDP", "unix":
 				if conn.Peer == "" {
 					continue
 				}
-				if _, ok := epm[conn.Type+": "+conn.Peer]; !ok {
+				key := conn.Type + ": " + conn.Peer
+
+				if _, ok := epm[key]; !ok {
 					if conn.Type == "TCP" || conn.Type == "UDP" { // possible external connection
-						host, port, _ := net.SplitHostPort(conn.Peer)
+						host, _, _ := net.SplitHostPort(conn.Peer)
 						ip := net.ParseIP(host)
 						_, ok := localIps[ip.String()]
 						_, ok2 := interfaces[ip.String()]
@@ -171,19 +166,19 @@ func connections(pt processTable) []connection {
 								ftype: conn.Type,
 								name:  conn.Name,
 								self: endpoint{
-									pid:     -1,
-									fd:      -1,
-									name:    conn.Peer,
-									command: port,
+									name: conn.Peer,
+									pid:  -1,
 								},
-								peer: self,
+								peer: endpoint{
+									name: conn.Self,
+									pid:  pid,
+								},
 							}
 						}
 					}
 					continue
 				}
 
-				key := conn.Type + ": " + conn.Peer
 				rpids := make([]Pid, len(epm[key]))
 				i := 0
 				for rpid := range epm[key] {
@@ -218,27 +213,23 @@ func connections(pt processTable) []connection {
 							continue
 						}
 
-						s := self
-						r := endpoint{
-							pid:     rpid,
-							fd:      rfd,
-							command: rp.Exec,
-							name:    conn.Peer,
+						connm[[4]int{int(pid), int(fd), int(rpid), int(rfd)}] = connection{
+							ftype: conn.Type,
+							name:  conn.Name,
+							self: endpoint{
+								pid: pid,
+							},
+							peer: endpoint{
+								pid: rpid,
+							},
 						}
 
 						log.DefaultLogger.Debug("Connection",
 							"type", conn.Type,
 							"name", conn.Name,
-							"self", s,
-							"peer", r,
+							"self", pid,
+							"peer", rpid,
 						)
-
-						connm[[4]int{int(s.pid), int(s.fd), int(r.pid), int(r.fd)}] = connection{
-							ftype: conn.Type,
-							name:  conn.Name,
-							self:  s,
-							peer:  r,
-						}
 					}
 				}
 			}
