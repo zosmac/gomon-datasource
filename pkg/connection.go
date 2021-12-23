@@ -36,11 +36,11 @@ var (
 					for _, addr := range addrs {
 						if ip, _, err := net.ParseCIDR(addr.String()); err == nil {
 							im[ip.String()] = ni.Name
-							if hosts, err := net.LookupAddr(ip.String()); err == nil {
-								for _, host := range hosts {
-									im[host] = ni.Name
-								}
-							}
+							// if hosts, err := net.LookupAddr(ip.String()); err == nil {
+							// 	for _, host := range hosts {
+							// 		im[host] = ni.Name
+							// 	}
+							// }
 						}
 					}
 				}
@@ -48,11 +48,11 @@ var (
 					for _, addr := range addrs {
 						if ip, _, err := net.ParseCIDR(addr.String()); err == nil {
 							im[ip.String()] = ni.Name
-							if hosts, err := net.LookupAddr(ip.String()); err == nil {
-								for _, host := range hosts {
-									im[host] = ni.Name
-								}
-							}
+							// if hosts, err := net.LookupAddr(ip.String()); err == nil {
+							// 	for _, host := range hosts {
+							// 		im[host] = ni.Name
+							// 	}
+							// }
 						}
 					}
 				}

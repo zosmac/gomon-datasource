@@ -90,12 +90,12 @@ func (pid Pid) commandLine() CommandLine {
 func getPids() ([]Pid, error) {
 	dir, err := os.Open("/proc")
 	if err != nil {
-		return nil, fmt.Errorf("/proc open error %v", err)
+		return nil, fmt.Errorf("/proc open error %w", err)
 	}
 	ns, err := dir.Readdirnames(0)
 	dir.Close()
 	if err != nil {
-		return nil, fmt.Errorf("/proc read error %v", err)
+		return nil, fmt.Errorf("/proc read error %w", err)
 	}
 
 	pids := make([]Pid, 0, len(ns))

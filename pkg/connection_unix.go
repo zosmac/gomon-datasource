@@ -1,6 +1,7 @@
 // Copyright © 2021 The Gomon Project.
 
 //go:build !windows
+// +build !windows
 
 package main
 
@@ -143,7 +144,8 @@ func lsofCommand(ready chan<- struct{}) {
 
 		switch fdType {
 		case "BLK", "DIR", "REG", "LINK",
-			"CHAN", "FSEVENT", "KQUEUE", "NEXUS", "NPOLICY", "PSXSHM":
+			"CHAN", "FSEVENT", "KQUEUE", "NEXUS", "NPOLICY", "PSXSHM",
+			"ndrv", "unknown":
 		case "CHR":
 			if name == os.DevNull {
 				fdType = "NUL"

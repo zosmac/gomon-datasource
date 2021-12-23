@@ -4,7 +4,6 @@ export interface MyQuery extends DataQuery {
   connected: boolean;
   kernel?: boolean;
   daemons?: boolean;
-  syslog?: boolean;
   files?: boolean;
 }
 

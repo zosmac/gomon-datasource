@@ -30,7 +30,6 @@ type (
 		Pid     `json:"pid"`
 		Kernel  bool `json:"kernel"`
 		Daemons bool `json:"daemons"`
-		Syslog  bool `json:"syslog"`
 		Files   bool `json:"files"`
 	}
 )
