@@ -57,7 +57,7 @@ func (pid Pid) props() (id, Props) {
 // commandLine retrieves process command, arguments, and environment.
 func (pid Pid) commandLine() CommandLine {
 	clLock.RLock()
-	cl, ok := commandLines[pid]
+	cl, ok := clMap[pid]
 	clLock.RUnlock()
 	if ok {
 		return cl
@@ -102,7 +102,7 @@ func (pid Pid) commandLine() CommandLine {
 		Envs: envs,
 	}
 	clLock.Lock()
-	commandLines[pid] = cl
+	clMap[pid] = cl
 	clLock.Unlock()
 	return cl
 }

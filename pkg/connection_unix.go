@@ -7,17 +7,23 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"net"
 	"os"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 var (
+	// hnMap caches resolver host name lookup.
+	hnMap  = map[string]string{}
+	hnLock sync.RWMutex
+
 	// regex for parsing lsof output lines from lsof command.
 	regex = regexp.MustCompile(
 		`^(?:(?P<header>COMMAND.*)|====(?P<trailer>\d\d:\d\d:\d\d)====.*|` +
@@ -62,55 +68,82 @@ type (
 	captureGroup string
 )
 
-// lsofCommand starts the lsof command to capture process connections
-func lsofCommand(ready chan<- struct{}) {
-	cmd := hostCommand() // perform OS specific customizations for command
+// init starts the lsof command as a sub-process.
+func init() {
+	go lsofCommand()
+	seteuid(uid)
+}
 
+// hostname resolves the host name for an ip address.
+func hostname(addr string) string {
+	ip, port, _ := net.SplitHostPort(addr)
+	hnLock.Lock()
+	defer hnLock.Unlock()
+	host, ok := hnMap[ip]
+	if ok {
+		if host == "" {
+			host = ip
+		}
+	} else {
+		hnMap[ip] = ""
+		host = ip
+		go func() {
+			if hosts, err := net.LookupAddr(ip); err == nil {
+				host = hosts[0]
+			} else {
+				host = ip
+			}
+			hnLock.Lock()
+			hnMap[ip] = host
+			hnLock.Unlock()
+		}()
+	}
+	return net.JoinHostPort(host, port)
+}
+
+// lsofCommand starts the lsof command to capture process connections.
+func lsofCommand() {
+	cmd := hostCommand() // perform OS specific customizations for command
+	var stdout, stderr io.ReadCloser
 	defer func() {
-		if r := recover(); r != nil {
-			buf := make([]byte, 4096)
-			n := runtime.Stack(buf, false)
-			buf = buf[:n]
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+			cmd.Wait()
+		}
+		if err, ok := recover().(error); ok && err != nil {
+			var buf []byte
+			if stderr != nil {
+				buf, _ = io.ReadAll(stderr)
+			}
 			log.DefaultLogger.Error("Command panicked",
 				"command", cmd.String(),
 				"pid", strconv.Itoa(cmd.Process.Pid), // to format as int rather than float
-				"panic", r,
-				"stacktrace", string(buf),
+				"error", err,
+				"stderr", string(buf),
+			)
+		} else {
+			log.DefaultLogger.Info("Command exited",
+				"command", cmd.String(),
+				"pid", strconv.Itoa(cmd.Process.Pid), // to format as int rather than float
 			)
 		}
 	}()
 
-	log.DefaultLogger.Info("Fork command to capture open process descriptors",
-		"command", cmd.String(),
-	)
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.DefaultLogger.Error("Pipe to stdout failed",
-			"command", cmd.String(),
-			"err", err,
-		)
-		return
+	var err error
+	if stdout, err = cmd.StdoutPipe(); err != nil {
+		panic(fmt.Errorf("stdout pipe failed %w", err))
 	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		log.DefaultLogger.Error("Pipe to stderr failed",
-			"command", cmd.String(),
-			"err", err,
-		)
-		return
+	if stderr, err = cmd.StderrPipe(); err != nil {
+		panic(fmt.Errorf("stderr pipe failed %w", err))
 	}
-
 	if err := cmd.Start(); err != nil {
-		log.DefaultLogger.Error("Command failed",
-			"command", cmd.String(),
-			"pid", strconv.Itoa(cmd.Process.Pid), // to format as int rather than float
-			"err", err,
-		)
-		return
+		panic(fmt.Errorf("start failed %w", err))
 	}
 
-	ready <- struct{}{}
+	log.DefaultLogger.Info("start command to capture open process descriptors",
+		"command", cmd.String(),
+		"pid", strconv.Itoa(cmd.Process.Pid), // to format as int rather than float
+	)
 
 	epm := map[Pid]Connections{}
 
@@ -171,13 +204,12 @@ func lsofCommand(ready chan<- struct{}) {
 				state = split[1]
 			}
 			split = strings.Split(split[0], "->")
-			self = split[0]
+			self = hostname(split[0])
 			if len(split) > 1 {
-				peer = strings.Split(split[1], " ")[0]
+				peer = hostname(strings.Split(split[1], " ")[0])
 			} else {
 				self += " " + state
 			}
-			name = device
 		case "systm":
 			self = device
 		case "key":
@@ -209,29 +241,5 @@ func lsofCommand(ready chan<- struct{}) {
 		epm[Pid(pid)] = append(epm[Pid(pid)], ep)
 	}
 
-	log.DefaultLogger.Error("Scanning output failed",
-		"command", cmd.String(),
-		"pid", strconv.Itoa(cmd.Process.Pid), // to format as int rather than float
-		"err", sc.Err(),
-	)
-
-	if buf, err := io.ReadAll(stderr); err != nil || len(buf) > 0 {
-		log.DefaultLogger.Error("Command error log",
-			"command", cmd.String(),
-			"pid", strconv.Itoa(cmd.Process.Pid), // to format as int rather than float
-			"err", err,
-			"stderr", string(buf),
-		)
-	}
-
-	err = cmd.Wait()
-	code := cmd.ProcessState.ExitCode()
-	log.DefaultLogger.Error("Command failed",
-		"command", cmd.String(),
-		"pid", strconv.Itoa(cmd.Process.Pid), // to format as int rather than float
-		"code", strconv.Itoa(code), // to format as int rather than float
-		"err", err,
-	)
-
-	os.Exit(code)
+	panic(fmt.Errorf("stdout closed %w", sc.Err()))
 }

@@ -17,7 +17,6 @@ var (
 	// localIps addresses for all local network interfaces on host
 	localIps = func() map[string]struct{} {
 		h, _ := os.Hostname()
-		log.DefaultLogger.Info("Hostname", "hostname", h)
 		ips, _ := net.LookupIP(h)
 		l := map[string]struct{}{}
 		l["localhost"] = struct{}{}
@@ -36,11 +35,6 @@ var (
 					for _, addr := range addrs {
 						if ip, _, err := net.ParseCIDR(addr.String()); err == nil {
 							im[ip.String()] = ni.Name
-							// if hosts, err := net.LookupAddr(ip.String()); err == nil {
-							// 	for _, host := range hosts {
-							// 		im[host] = ni.Name
-							// 	}
-							// }
 						}
 					}
 				}
@@ -48,18 +42,11 @@ var (
 					for _, addr := range addrs {
 						if ip, _, err := net.ParseCIDR(addr.String()); err == nil {
 							im[ip.String()] = ni.Name
-							// if hosts, err := net.LookupAddr(ip.String()); err == nil {
-							// 	for _, host := range hosts {
-							// 		im[host] = ni.Name
-							// 	}
-							// }
 						}
 					}
 				}
 			}
 		}
-		log.DefaultLogger.Info("interfaces",
-			"interfaces", im)
 		return im
 	}()
 )
@@ -87,7 +74,7 @@ func connections(pt processTable) []connection {
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.DefaultLogger.Error("Connections panicked",
+			log.DefaultLogger.Error("connections panicked",
 				"panic", r,
 				"stacktrace", string(buf),
 			)
@@ -158,9 +145,13 @@ func connections(pt processTable) []connection {
 					if conn.Type == "TCP" || conn.Type == "UDP" { // possible external connection
 						host, _, _ := net.SplitHostPort(conn.Peer)
 						ip := net.ParseIP(host)
-						_, ok := localIps[ip.String()]
-						_, ok2 := interfaces[ip.String()]
-						if !(ok || ok2 || ip.IsLoopback() || ip.IsInterfaceLocalMulticast() ||
+						var local bool
+						if _, local = localIps[ip.String()]; local {
+						} else if _, local = interfaces[ip.String()]; local {
+						} else {
+							local = (host == "localhost")
+						}
+						if !(local || ip.IsLoopback() || ip.IsInterfaceLocalMulticast() ||
 							ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast()) {
 							connm[[4]int{-1, -1, int(pid), int(fd)}] = connection{
 								ftype: conn.Type,
@@ -227,8 +218,8 @@ func connections(pt processTable) []connection {
 						log.DefaultLogger.Debug("Connection",
 							"type", conn.Type,
 							"name", conn.Name,
-							"self", pid,
-							"peer", rpid,
+							"self", strconv.Itoa(int(pid)), // to format as int rather than float
+							"peer", strconv.Itoa(int(rpid)),
 						)
 					}
 				}
