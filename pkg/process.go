@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"sort"
@@ -165,7 +166,7 @@ func buildTable() processTable {
 
 	pids, err := getPids()
 	if err != nil {
-		panic("could not build process table")
+		panic(fmt.Errorf("could not build process table %v", err))
 	}
 
 	var epm map[Pid]Connections

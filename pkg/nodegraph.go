@@ -70,7 +70,7 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 		if conn.self.pid == -1 { // external network connections (self.pid/fd = -1/-1)
 			host, port, _ := net.SplitHostPort(conn.self.name)
 			self := conn.ftype + ":" + conn.self.name
-			nm[self] = append([]interface{}{"", host, ":" + port}, hostArc()...)
+			nm[self] = append([]interface{}{conn.name, conn.ftype + ":" + port, host}, hostArc()...)
 
 			pc := []interface{}{pt[conn.peer.pid].Exec, filepath.Base(pt[conn.peer.pid].Exec), fmt.Sprintf("[%d]", conn.peer.pid)}
 			peer := fmt.Sprintf("%s%s", pc[1:]...)
@@ -154,7 +154,7 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 				}
 
 				log.DefaultLogger.Debug("FILE NAME",
-					"pid", conn.self.pid,
+					"pid", strconv.Itoa(int(conn.self.pid)), // to format as int rather than float
 					"name", conn.name,
 				)
 
@@ -212,7 +212,7 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 		}
 		if values, ok := nm[id]; ok {
 			log.DefaultLogger.Debug("Peer node found",
-				"pid", pid,
+				"pid", strconv.Itoa(int(pid)), // to format as int rather than float
 				"node", id,
 			)
 			nodes.AppendRow(append([]interface{}{id}, values...)...)
