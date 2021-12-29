@@ -9,6 +9,8 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+
+	"github.com/zosmac/grafana-plugins/gomon-datasource/pkg/process"
 )
 
 // go generate creates version.go to set vmmp and package dependencies for version.
@@ -21,7 +23,7 @@ func main() {
 		"build_date", buildDate,
 		"compiler", fmt.Sprintf("%s %s_%s", runtime.Version(), runtime.GOOS, runtime.GOARCH),
 	)
-	if err := datasource.Serve(newDatasource()); err != nil {
+	if err := datasource.Manage("zosmac-gomon-datasource", process.NewDataSourceInstance, datasource.ManageOpts{}); err != nil {
 		log.DefaultLogger.Error("Startup failed",
 			"err", err,
 		)
