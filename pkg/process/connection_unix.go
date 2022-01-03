@@ -9,21 +9,15 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 var (
-	// hnMap caches resolver host name lookup.
-	hnMap  = map[string]string{}
-	hnLock sync.RWMutex
-
 	// regex for parsing lsof output lines from lsof command.
 	regex = regexp.MustCompile(
 		`^(?:(?P<header>COMMAND.*)|====(?P<trailer>\d\d:\d\d:\d\d)====.*|` +
@@ -76,36 +70,6 @@ func init() {
 		)
 	}
 	seteuid(uid) // after lsof command starts, set to the grafana user
-}
-
-// hostname resolves the host name for an ip address.
-func hostname(addr string) string {
-	ip, port, _ := net.SplitHostPort(addr)
-	hnLock.Lock()
-	defer hnLock.Unlock()
-	host, ok := hnMap[ip]
-	if ok {
-		if host == "" {
-			host = ip
-		}
-	} else {
-		hnMap[ip] = ""
-		host = ip
-		go func() {
-			if hosts, err := net.LookupAddr(ip); err == nil {
-				host = hosts[0]
-				if i, ok := interfaces[ip]; ok {
-					interfaces[host] = i
-				}
-			} else {
-				host = ip
-			}
-			hnLock.Lock()
-			hnMap[ip] = host
-			hnLock.Unlock()
-		}()
-	}
-	return net.JoinHostPort(host, port)
 }
 
 // lsofCommand starts the lsof command to capture process connections.
@@ -177,25 +141,19 @@ func parseOutput(stdout io.ReadCloser) {
 				self = name
 			}
 		case "PIPE", "unix":
+			self = device
 			peer = name
 			if len(peer) > 2 && peer[:2] == "->" {
 				peer = peer[2:] // strip "->"
 			}
-			name = device
-			self = device
+			name = self + "->" + peer
 		case "IPv4", "IPv6":
-			var state string
 			fdType = node
 			split := strings.Split(name, " ")
-			if len(split) > 1 {
-				state = split[1]
-			}
 			split = strings.Split(split[0], "->")
-			self = hostname(split[0])
+			self = split[0]
 			if len(split) > 1 {
-				peer = hostname(strings.Split(split[1], " ")[0])
-			} else {
-				self += " " + state
+				peer = split[1]
 			}
 		case "systm":
 			self = device

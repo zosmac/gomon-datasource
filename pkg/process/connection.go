@@ -9,19 +9,19 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 var (
 	// localIps addresses for all local network interfaces on host
-	localIps = func() map[string]struct{} {
+	localIps = func() map[string]string {
+		l := map[string]string{}
 		h, _ := os.Hostname()
 		ips, _ := net.LookupIP(h)
-		l := map[string]struct{}{}
-		l["localhost"] = struct{}{}
 		for _, ip := range ips {
-			l[ip.String()] = struct{}{}
+			l[ip.String()] = h
 		}
 		return l
 	}()
@@ -49,6 +49,10 @@ var (
 		}
 		return im
 	}()
+
+	// hnMap caches resolver host name lookup.
+	hnMap  = map[string]string{}
+	hnLock sync.RWMutex
 )
 
 type (
@@ -64,6 +68,27 @@ type (
 		peer  endpoint
 	}
 )
+
+// hostname resolves the host name for an ip address.
+func hostname(ip string) string {
+	hnLock.Lock()
+	defer hnLock.Unlock()
+
+	if host, ok := hnMap[ip]; ok {
+		return host
+	}
+
+	hnMap[ip] = ip
+	go func() { // initiate hostname lookup
+		if hosts, err := net.LookupAddr(ip); err == nil {
+			hnLock.Lock()
+			hnMap[ip] = hosts[0]
+			hnLock.Unlock()
+		}
+	}()
+
+	return ip
+}
 
 // connections creates an ordered slice of local to remote connections by pid and fd.
 func connections(pt processTable) []connection {
@@ -144,15 +169,17 @@ func connections(pt processTable) []connection {
 				if _, ok := epm[key]; !ok {
 					if conn.Type == "TCP" || conn.Type == "UDP" { // possible external connection
 						host, _, _ := net.SplitHostPort(conn.Peer)
-						ip := net.ParseIP(host)
 						var local bool
-						if _, local = localIps[ip.String()]; local {
-						} else if _, local = interfaces[ip.String()]; local {
+						if _, local = localIps[host]; local {
+						} else if _, local = interfaces[host]; local {
 						} else {
-							local = (host == "localhost")
+							ip := net.ParseIP(host)
+							local = ip.IsLoopback() ||
+								ip.IsInterfaceLocalMulticast() ||
+								ip.IsLinkLocalMulticast() ||
+								ip.IsLinkLocalUnicast()
 						}
-						if !(local || ip.IsLoopback() || ip.IsInterfaceLocalMulticast() ||
-							ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast()) {
+						if !local {
 							connm[[4]int{-1, -1, int(pid), int(fd)}] = connection{
 								ftype: conn.Type,
 								name:  conn.Name,
@@ -208,10 +235,12 @@ func connections(pt processTable) []connection {
 							ftype: conn.Type,
 							name:  conn.Name,
 							self: endpoint{
-								pid: pid,
+								name: conn.Self,
+								pid:  pid,
 							},
 							peer: endpoint{
-								pid: rpid,
+								name: conn.Peer,
+								pid:  rpid,
 							},
 						}
 

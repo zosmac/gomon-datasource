@@ -10,6 +10,7 @@ import (
 	"net"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
@@ -70,17 +71,17 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 		if conn.self.pid == -1 { // external network connections (self.pid/fd = -1/-1)
 			host, port, _ := net.SplitHostPort(conn.self.name)
 			self := conn.ftype + ":" + conn.self.name
-			nm[self] = append([]interface{}{conn.name, conn.ftype + ":" + port, host}, hostArc()...)
+			nm[self] = append([]interface{}{host, conn.ftype + ":" + port, hostname(host)}, hostArc()...)
 
 			pc := []interface{}{pt[conn.peer.pid].Exec, filepath.Base(pt[conn.peer.pid].Exec), fmt.Sprintf("[%d]", conn.peer.pid)}
 			peer := fmt.Sprintf("%s%s", pc[1:]...)
 			nm[peer] = append(pc, procArc()...)
 
-			local, _, _ := net.SplitHostPort(conn.peer.name)
+			host, _, _ = net.SplitHostPort(conn.peer.name)
 			em[fmt.Sprintf("%s->%d", self, conn.peer.pid)] = []interface{}{
 				self,
 				peer,
-				interfaces[local],
+				interfaces[host],
 				conn.peer.name,
 			}
 
@@ -134,11 +135,25 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 			peer := fmt.Sprintf("%s%s", pc[1:]...)
 			nm[peer] = append(pc, procArc()...)
 
+			t := conn.ftype
+			n := conn.name
+			if t == "TCP" || t == "UDP" {
+				ip, sp, _ := net.SplitHostPort(conn.self.name)
+				_, pp, _ := net.SplitHostPort(conn.peer.name)
+				t = interfaces[ip] + ":"
+				if strings.IndexByte(ip, ':') < 0 {
+					t += ip
+				} else {
+					t += "[" + ip + "]"
+				}
+				n = ":" + sp + "->:" + pp
+			}
+
 			em[fmt.Sprintf("%d->%d", conn.self.pid, conn.peer.pid)] = []interface{}{
 				self,
 				peer,
-				conn.ftype,
-				conn.name,
+				t,
+				n,
 			}
 		}
 	}
