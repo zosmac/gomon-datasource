@@ -29,9 +29,16 @@ type (
 )
 
 func NewDataSourceInstance(dsis backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	var settings map[string]interface{}
-	err := json.Unmarshal(dsis.JSONData, &settings)
+	err := lsofCommand()
+	setuid() // after lsof command starts, set to the grafana user
 	if err != nil {
+		log.DefaultLogger.Error("command to capture open process descriptors failed",
+			"error", err,
+		)
+	}
+
+	var settings map[string]interface{}
+	if err := json.Unmarshal(dsis.JSONData, &settings); err != nil {
 		log.DefaultLogger.Error("Unmarshaling instance settings failed",
 			"err", err,
 		)
@@ -56,6 +63,20 @@ func NewDataSourceInstance(dsis backend.DataSourceInstanceSettings) (instancemgm
 	}, nil
 }
 
+// CheckHealth run when "save and test" of data source run.
+func (s *instanceSettings) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+	log.DefaultLogger.Info("CheckHealth request received",
+		"request", req,
+	)
+
+	return &backend.CheckHealthResult{
+		Status:      backend.HealthStatusOk,
+		Message:     "Instance healthy",
+		JSONDetails: nil,
+	}, nil
+}
+
+// Dispose run when instance cleaned up.
 func (s *instanceSettings) Dispose() {
 	log.DefaultLogger.Info("Dispose Called",
 		"url", s.URL,

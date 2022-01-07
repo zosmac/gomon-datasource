@@ -16,6 +16,10 @@ import (
 // go generate creates version.go to set vmmp and package dependencies for version.
 //go:generate ./generate.sh
 
+const (
+	pluginID = "zosmac-gomon-datasource"
+)
+
 func main() {
 	log.DefaultLogger.Info("Starting gomon process nodegraph plugin backend data source",
 		"plugin", executable,
@@ -23,7 +27,11 @@ func main() {
 		"build_date", buildDate,
 		"compiler", fmt.Sprintf("%s %s_%s", runtime.Version(), runtime.GOOS, runtime.GOARCH),
 	)
-	if err := datasource.Manage("zosmac-gomon-datasource", process.NewDataSourceInstance, datasource.ManageOpts{}); err != nil {
+
+	if err := datasource.Manage(pluginID,
+		process.NewDataSourceInstance,
+		datasource.ManageOpts{},
+	); err != nil {
 		log.DefaultLogger.Error("Startup failed",
 			"err", err,
 		)

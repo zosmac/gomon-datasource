@@ -15,25 +15,28 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
-// seteuid toggles effective userid of gomon-datasource.
-func seteuid(id int) {
-	log.DefaultLogger.Debug("Current uid and euid",
-		"uid", os.Getuid(),
-		"euid", os.Geteuid(),
+// seteuid gomon-datasource to owner.
+func seteuid() {
+	err := syscall.Seteuid(euid)
+	log.DefaultLogger.Debug("Seteuid results",
+		"uid", strconv.Itoa(os.Getuid()), // to format as int rather than float
+		"euid", strconv.Itoa(os.Geteuid()), // to format as int rather than float
+		"err", err,
 	)
+}
 
-	if uid != euid {
-		err := syscall.Seteuid(id)
-		log.DefaultLogger.Debug("Seteuid results",
-			"uid", os.Getuid(),
-			"euid", os.Geteuid(),
-			"err", err,
-		)
-	}
+// setuid gomon-datasource to grafana user.
+func setuid() {
+	err := syscall.Seteuid(os.Getuid())
+	log.DefaultLogger.Debug("Setuid results",
+		"uid", strconv.Itoa(os.Getuid()), // to format as int rather than float
+		"euid", strconv.Itoa(os.Geteuid()), // to format as int rather than float
+		"err", err,
+	)
 }
 
 var (
-	uid  = os.Getuid()
+	// euid gets the executable's owner id.
 	euid = os.Geteuid()
 
 	// users caches user names for uids.
@@ -161,8 +164,8 @@ func (p *process) ID() string {
 
 // buildTable builds a process table and captures current process state
 func buildTable() processTable {
-	seteuid(euid)
-	defer seteuid(uid)
+	seteuid()
+	defer setuid()
 
 	pids, err := getPids()
 	if err != nil {
