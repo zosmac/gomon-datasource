@@ -62,6 +62,16 @@ type (
 	captureGroup string
 )
 
+func init() {
+	err := lsofCommand()
+	setuid() // after lsof command starts, set to the grafana user
+	if err != nil {
+		log.DefaultLogger.Error("command to capture open process descriptors failed",
+			"error", err,
+		)
+	}
+}
+
 // lsofCommand starts the lsof command to capture process connections.
 func lsofCommand() error {
 	cmd := hostCommand() // perform OS specific customizations for command

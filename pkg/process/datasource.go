@@ -29,14 +29,6 @@ type (
 )
 
 func NewDataSourceInstance(dsis backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	err := lsofCommand()
-	setuid() // after lsof command starts, set to the grafana user
-	if err != nil {
-		log.DefaultLogger.Error("command to capture open process descriptors failed",
-			"error", err,
-		)
-	}
-
 	var settings map[string]interface{}
 	if err := json.Unmarshal(dsis.JSONData, &settings); err != nil {
 		log.DefaultLogger.Error("Unmarshaling instance settings failed",
