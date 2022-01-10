@@ -71,10 +71,14 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 		if conn.self.pid == -1 { // external network connections (self.pid/fd = -1/-1)
 			host, port, _ := net.SplitHostPort(conn.self.name)
 			self := conn.ftype + ":" + conn.self.name
-			nm[self] = append([]interface{}{host, conn.ftype + ":" + port, hostname(host)}, hostArc()...)
+			name := hostname(host)
+			if name == host {
+				name = ""
+			}
+			nm[self] = append([]interface{}{conn.ftype + ":" + port, host, name}, hostArc()...)
 
-			pc := []interface{}{pt[conn.peer.pid].Exec, filepath.Base(pt[conn.peer.pid].Exec), fmt.Sprintf("[%d]", conn.peer.pid)}
-			peer := fmt.Sprintf("%s%s", pc[1:]...)
+			pc := []interface{}{filepath.Base(pt[conn.peer.pid].Exec), fmt.Sprintf("[%d]", conn.peer.pid), pt[conn.peer.pid].Exec}
+			peer := fmt.Sprintf("%s%s", pc[:2]...)
 			nm[peer] = append(pc, procArc()...)
 
 			host, _, _ = net.SplitHostPort(conn.peer.name)
@@ -106,14 +110,14 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 		} else if conn.self.pid == 0 { // ignore kernel
 		} else if conn.self.pid == 1 {
 			if qm.Daemons {
-				pc := []interface{}{pt[conn.peer.pid].Exec, filepath.Base(pt[conn.peer.pid].Exec), fmt.Sprintf("[%d]", conn.peer.pid)}
-				peer := fmt.Sprintf("%s%s", pc[1:]...)
+				pc := []interface{}{filepath.Base(pt[conn.peer.pid].Exec), fmt.Sprintf("[%d]", conn.peer.pid), pt[conn.peer.pid].Exec}
+				peer := fmt.Sprintf("%s%s", pc[:2]...)
 				nm[peer] = append(pc, procArc()...)
 			}
 		} else if conn.peer.pid == 1 {
 			if qm.Daemons {
-				sc := []interface{}{pt[conn.self.pid].Exec, filepath.Base(pt[conn.self.pid].Exec), fmt.Sprintf("[%d]", conn.self.pid)}
-				self := fmt.Sprintf("%s%s", sc[1:]...)
+				sc := []interface{}{filepath.Base(pt[conn.self.pid].Exec), fmt.Sprintf("[%d]", conn.self.pid), pt[conn.self.pid].Exec}
+				self := fmt.Sprintf("%s%s", sc[:2]...)
 				nm[self] = append(sc, procArc()...)
 			}
 		} else { // peer is process
@@ -127,12 +131,12 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 				peerExec = filepath.Base(pt[conn.peer.pid].Exec)
 			}
 
-			sc := []interface{}{pt[conn.self.pid].Exec, filepath.Base(pt[conn.self.pid].Exec), fmt.Sprintf("[%d]", conn.self.pid)}
-			self := fmt.Sprintf("%s%s", sc[1:]...)
+			sc := []interface{}{filepath.Base(pt[conn.self.pid].Exec), fmt.Sprintf("[%d]", conn.self.pid), pt[conn.self.pid].Exec}
+			self := fmt.Sprintf("%s%s", sc[:2]...)
 			nm[self] = append(sc, procArc()...)
 
-			pc := []interface{}{pt[conn.peer.pid].Exec, peerExec, fmt.Sprintf("[%d]", conn.peer.pid)}
-			peer := fmt.Sprintf("%s%s", pc[1:]...)
+			pc := []interface{}{peerExec, fmt.Sprintf("[%d]", conn.peer.pid), pt[conn.peer.pid].Exec}
+			peer := fmt.Sprintf("%s%s", pc[:2]...)
 			nm[peer] = append(pc, procArc()...)
 
 			t := conn.ftype
@@ -162,8 +166,7 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 		j := Pid(1)
 		for _, conn := range conns {
 			if conn.peer.pid == math.MaxInt32 { // peer is file
-				sc := []interface{}{pt[conn.self.pid].Exec, filepath.Base(pt[conn.self.pid].Exec), fmt.Sprintf("[%d]", conn.self.pid)}
-				self := fmt.Sprintf("%s%s", sc[1:]...)
+				self := fmt.Sprintf("%s[%d]", filepath.Base(pt[conn.self.pid].Exec), conn.self.pid)
 				if _, ok := nm[self]; !ok {
 					continue
 				}
@@ -174,7 +177,7 @@ func nodeGraph(qm queryModel) (*data.Frame, *data.Frame) {
 				)
 
 				peer := conn.name
-				nm[peer] = append([]interface{}{"", filepath.Dir(peer), filepath.Base(peer)}, fileArc()...)
+				nm[peer] = append([]interface{}{filepath.Dir(peer), filepath.Base(peer), ""}, fileArc()...)
 
 				em[fmt.Sprintf("%d->%s", conn.self.pid, conn.name)] = []interface{}{
 					self,
@@ -259,25 +262,25 @@ func frames() (nodes *data.Frame, edges *data.Frame) {
 			},
 		}},
 	})
-	nodes.SetFieldNames("id", "title", "mainStat", "secondaryStat", "arc__host", "arc__process", "arc__file")
+	nodes.SetFieldNames("id", "mainStat", "secondaryStat", "title", "arc__host", "arc__process", "arc__file")
 	nodes.Fields[0].Config = &data.FieldConfig{
 		DisplayName: "ID",
 		Path:        "id",
 	}
 	nodes.Fields[1].Config = &data.FieldConfig{
-		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "red"},
-		DisplayName: "Name",
-		Path:        "name",
-	}
-	nodes.Fields[2].Config = &data.FieldConfig{
 		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "blue"},
 		DisplayName: "Host/Command/File",
 		Path:        "command",
 	}
-	nodes.Fields[3].Config = &data.FieldConfig{
+	nodes.Fields[2].Config = &data.FieldConfig{
 		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "green"},
 		DisplayName: "Host/Command/File",
 		Path:        "command",
+	}
+	nodes.Fields[3].Config = &data.FieldConfig{
+		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "red"},
+		DisplayName: "Name",
+		Path:        "name",
 	}
 	nodes.Fields[4].Config = &data.FieldConfig{
 		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "red"},
