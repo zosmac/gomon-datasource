@@ -8,7 +8,6 @@ import (
 	"os"
 	"runtime"
 	"sort"
-	"strconv"
 	"sync"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
@@ -127,8 +126,8 @@ func connections(pt processTable) []connection {
 	for pid, p := range pt {
 		ppid := p.Ppid
 		connm[[4]int{int(ppid), -1, int(pid), -1}] = connection{
-			ftype: "parent:" + strconv.Itoa(int(ppid)), // set for edge tooltip
-			name:  "child:" + strconv.Itoa(int(pid)),
+			ftype: "parent:" + ppid.String(), // set for edge tooltip
+			name:  "child:" + pid.String(),
 			self: endpoint{
 				pid: ppid,
 			},
@@ -141,7 +140,7 @@ func connections(pt processTable) []connection {
 			fd := conn.Descriptor
 			switch conn.Type {
 			case "NUL": // ignore /dev/null connection endpoints
-			case "REG", "PSXSHM":
+			case "DIR", "REG", "PSXSHM":
 				connm[[4]int{int(pid), int(fd), math.MaxInt32, 0}] = connection{
 					ftype: conn.Type,
 					name:  conn.Name,
@@ -247,8 +246,8 @@ func connections(pt processTable) []connection {
 						log.DefaultLogger.Debug("Connection",
 							"type", conn.Type,
 							"name", conn.Name,
-							"self", strconv.Itoa(int(pid)), // to format as int rather than float
-							"peer", strconv.Itoa(int(rpid)),
+							"self", pid.String(), // to format as int rather than float
+							"peer", rpid.String(),
 						)
 					}
 				}

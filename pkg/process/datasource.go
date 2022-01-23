@@ -18,14 +18,6 @@ type (
 	instanceSettings struct {
 		url.URL
 	}
-
-	// queryModel of the datasource.
-	queryModel struct {
-		Pid     `json:"pid"`
-		Kernel  bool `json:"kernel"`
-		Daemons bool `json:"daemons"`
-		Files   bool `json:"files"`
-	}
 )
 
 func NewDataSourceInstance(dsis backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
@@ -96,11 +88,11 @@ func (s *instanceSettings) QueryData(ctx context.Context, req *backend.QueryData
 		}
 	}()
 
-	for _, q := range req.Queries {
+	for _, dq := range req.Queries {
 		log.DefaultLogger.Info("DataQuery JSON",
-			"json", q.JSON,
+			"json", dq.JSON,
 		)
-		resp.Responses[q.RefID] = query(ctx, q)
+		resp.Responses[dq.RefID] = nodeGraph(ctx, &dq)
 	}
 
 	return resp, nil

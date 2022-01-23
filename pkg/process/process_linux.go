@@ -27,16 +27,17 @@ var (
 
 // props captures the properties of a process.
 func (pid Pid) props() (id, Props) {
-	buf, err := os.ReadFile("/proc/" + strconv.Itoa(int(pid)) + "/stat")
+	buf, err := os.ReadFile(filepath.Join("/proc", pid.String(), "stat"))
 	if err != nil {
-		log.DefaultLogger.Error("Cannot read proc file",
-			"path", "/proc/"+strconv.Itoa(int(pid))+"/stat",
+		log.DefaultLogger.Error("Cannot read /proc/pid/stat file",
+			"pid", pid.String(), // to format as int rather than float
+			"err", err,
 		)
 		return id{Pid: pid}, Props{}
 	}
 	fields := strings.Fields(string(buf))
 
-	m, _ := measures(filepath.Join("/proc", strconv.Itoa(int(pid)), "status"))
+	m, _ := measures(filepath.Join("/proc", pid.String(), "status"))
 
 	ppid, _ := strconv.Atoi(fields[3])
 	pgid, _ := strconv.Atoi(fields[4])
@@ -52,8 +53,8 @@ func (pid Pid) props() (id, Props) {
 			Pgid:        pgid,
 			UID:         uid,
 			GID:         gid,
-			Username:    users.name(int(uid)),
-			Groupname:   groups.name(int(gid)),
+			Username:    users.name(uid),
+			Groupname:   groups.name(gid),
 			Status:      status[fields[2][0]],
 			CommandLine: pid.commandLine(),
 		}
@@ -68,14 +69,14 @@ func (pid Pid) commandLine() CommandLine {
 		return cl
 	}
 
-	cl.Exec, _ = os.Readlink(filepath.Join("/proc", strconv.Itoa(int(pid)), "exe"))
+	cl.Exec, _ = os.Readlink(filepath.Join("/proc", pid.String(), "exe"))
 
-	if arg, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(int(pid)), "cmdline")); err == nil {
+	if arg, err := os.ReadFile(filepath.Join("/proc", pid.String(), "cmdline")); err == nil {
 		cl.Args = strings.Split(string(arg[:len(arg)-2]), "\000")
 		cl.Args = cl.Args[1:]
 	}
 
-	if env, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(int(pid)), "environ")); err == nil {
+	if env, err := os.ReadFile(filepath.Join("/proc", pid.String(), "environ")); err == nil {
 		cl.Envs = strings.Split(string(env), "\000")
 	}
 
