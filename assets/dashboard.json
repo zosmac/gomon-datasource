@@ -19,145 +19,37 @@
             }
          ]
       },
-      "description" : "Display process node graph and list inter-process connections",
+      "description" : "",
       "editable" : true,
       "fiscalYearStartMonth" : 0,
       "graphTooltip" : 0,
-      "id" : null,
       "links" : [],
       "liveNow" : false,
       "panels" : [
          {
-            "datasource" : "gomon-datasource",
+            "description" : "",
             "gridPos" : {
-               "h" : 24,
-               "w" : 16,
+               "h" : 21,
+               "w" : 24,
                "x" : 0,
                "y" : 0
             },
             "id" : 2,
-            "pluginVersion" : "8.2.5",
             "targets" : [
                {
-                  "connected" : true,
+                  "datasource" : {
+                     "type" : "zosmac-gomon-datasource"
+                  },
+                  "hide" : false,
                   "refId" : "A"
                }
             ],
-            "title" : "Process Nodegraph",
+            "title" : "Process Node Graph",
             "type" : "nodeGraph"
-         },
-         {
-            "datasource" : {
-               "type" : "datasource",
-               "uid" : "-- Dashboard --"
-            },
-            "fieldConfig" : {
-               "defaults" : {
-                  "color" : {
-                     "mode" : "thresholds"
-                  },
-                  "custom" : {
-                     "displayMode" : "auto",
-                     "filterable" : true
-                  },
-                  "mappings" : [],
-                  "thresholds" : {
-                     "mode" : "absolute",
-                     "steps" : [
-                        {
-                           "color" : "green",
-                           "value" : null
-                        }
-                     ]
-                  }
-               },
-               "overrides" : [
-                  {
-                     "matcher" : {
-                        "id" : "byName",
-                        "options" : "Type"
-                     },
-                     "properties" : [
-                        {
-                           "id" : "custom.width",
-                           "value" : 80
-                        }
-                     ]
-                  },
-                  {
-                     "matcher" : {
-                        "id" : "byName",
-                        "options" : "Source ID"
-                     },
-                     "properties" : [
-                        {
-                           "id" : "custom.width",
-                           "value" : 100
-                        }
-                     ]
-                  },
-                  {
-                     "matcher" : {
-                        "id" : "byName",
-                        "options" : "Target ID"
-                     },
-                     "properties" : [
-                        {
-                           "id" : "custom.width",
-                           "value" : 100
-                        }
-                     ]
-                  },
-                  {
-                     "matcher" : {
-                        "id" : "byName",
-                        "options" : "ID"
-                     },
-                     "properties" : [
-                        {
-                           "id" : "custom.width",
-                           "value" : 100
-                        }
-                     ]
-                  }
-               ]
-            },
-            "gridPos" : {
-               "h" : 24,
-               "w" : 8,
-               "x" : 16,
-               "y" : 0
-            },
-            "id" : 4,
-            "options" : {
-               "footer" : {
-                  "fields" : "",
-                  "reducer" : [
-                     "sum"
-                  ],
-                  "show" : false
-               },
-               "frameIndex" : 1,
-               "showHeader" : true,
-               "sortBy" : [
-                  {
-                     "desc" : false,
-                     "displayName" : "Relation"
-                  }
-               ]
-            },
-            "pluginVersion" : "8.2.5",
-            "targets" : [
-               {
-                  "connected" : true,
-                  "panelId" : 2,
-                  "refId" : "A"
-               }
-            ],
-            "title" : "Nodes/Edges List",
-            "type" : "table"
          }
       ],
+      "refresh" : "",
+      "schemaVersion" : 34,
       "style" : "light",
       "tags" : [
          "gomon"
@@ -166,13 +58,12 @@
          "list" : []
       },
       "time" : {
-         "from" : "now-1h",
+         "from" : "now-5m",
          "to" : "now"
       },
       "timepicker" : {},
       "timezone" : "",
-      "title" : "Gomon Process Nodegraph",
-      "version" : 0,
+      "title" : "Gomon Process Node Graph Dashboard",
       "weekStart" : ""
    },
    "meta" : {
@@ -188,11 +79,7 @@
       "isFolder" : false,
       "provisioned" : false,
       "provisionedExternalId" : "",
-      "slug" : "gomon-process-nodegraph",
-      "type" : "db",
-      "version" : 0
-   },
-
-   "message" : "Initialize gomon data source dashboard",
-   "overwrite" : true
+      "slug" : "gomon-process-node-graph-dashboard",
+      "type" : "db"
+   }
 }

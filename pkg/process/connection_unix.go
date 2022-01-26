@@ -127,9 +127,11 @@ func parseOutput(stdout io.ReadCloser) {
 		var self, peer string
 
 		switch fdType {
-		case "BLK", "DIR", "REG", "LINK",
-			"CHAN", "FSEVENT", "KQUEUE", "NEXUS", "NPOLICY", "PSXSHM",
+		case "LINK", "CHAN", "FSEVENT", "KQUEUE", "NEXUS", "NPOLICY",
 			"ndrv", "unknown":
+		case "BLK", "DIR", "REG", "PSXSHM":
+			self = name
+			peer = name
 		case "CHR":
 			if name == os.DevNull {
 				fdType = "NUL"

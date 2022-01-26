@@ -1,11 +1,11 @@
 import defaults from 'lodash/defaults';
-
 import React, { ChangeEvent, PureComponent } from 'react';
-import { LegacyForms } from '@grafana/ui';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
+import { LegacyForms } from '@grafana/ui';
+
 import { defaultDataSourceOptions, MyDataSourceOptions, MySecureJsonData } from './types';
 
-const { SecretFormField, FormField } = LegacyForms;
+const { FormField, SecretFormField } = LegacyForms;
 
 interface Props extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
 
@@ -112,6 +112,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
             onChange={this.onPathChange}
           />
         </div>
+
         <div className="gf-form">
           <SecretFormField
             isConfigured={(secureJsonFields && secureJsonFields.user) as boolean}
@@ -124,7 +125,6 @@ export class ConfigEditor extends PureComponent<Props, State> {
             onReset={this.onResetUser}
           />
         </div>
-
         <div className="gf-form-inline">
           <div className="gf-form">
             <SecretFormField

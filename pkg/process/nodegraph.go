@@ -4,7 +4,6 @@ package process
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"net"
@@ -17,39 +16,11 @@ import (
 )
 
 var (
-	// host/proc/fileArc specify the arc for the circle drawn around a node.
+	// host/proc specify the arc for the circle drawn around a node.
 	// Each arc has a specific color set in its field metadata to create a circle that identifies the node type.
-	hostArc = []interface{}{1.0, 0.0, 0.0, 0.0, 0.0} // red
-	kernArc = []interface{}{0.0, 1.0, 0.0, 0.0, 0.0} // magenta
-	procArc = []interface{}{0.0, 0.0, 1.0, 0.0, 0.0} // blue
-	dirArc  = []interface{}{0.0, 0.0, 0.0, 1.0, 0.0} // green
-	fileArc = []interface{}{0.0, 0.0, 0.0, 0.0, 1.0} // yellow
+	hostArc = []interface{}{1.0, 0.0} // red
+	procArc = []interface{}{0.0, 1.0} // blue
 )
-
-type (
-	// query model of the datasource.
-	query struct {
-		Pid     `json:"pid"`
-		Kernel  bool `json:"kernel"`
-		Daemons bool `json:"daemons"`
-		Files   bool `json:"files"`
-	}
-)
-
-func parse(dq *backend.DataQuery) (query, error) {
-	var q query
-	if err := json.Unmarshal(dq.JSON, &q); err != nil {
-		return q, err
-	}
-
-	return query{
-		Pid:     q.Pid,
-		Kernel:  q.Kernel || q.Pid > 0,
-		Daemons: q.Daemons || q.Pid > 0,
-		Files:   q.Files || q.Pid > 0,
-	}, nil
-
-}
 
 // nodeGraph produces the process connections node graph.
 func nodeGraph(ctx context.Context, dq *backend.DataQuery) backend.DataResponse {
@@ -57,37 +28,6 @@ func nodeGraph(ctx context.Context, dq *backend.DataQuery) backend.DataResponse 
 
 	pt := buildTable()
 	conns := connections(pt)
-
-	q, err := parse(dq)
-	if err != nil {
-		return backend.DataResponse{
-			Error: err,
-		}
-	}
-	if q.Pid > 0 && pt[q.Pid] == nil {
-		q = query{} // reset to default
-	}
-	if q.Pid > 0 {
-		ft := map[Pid]struct{}{q.Pid: {}}
-		for pid := pt[q.Pid].Ppid; pid > 1; pid = pt[pid].Ppid { // ancestors
-			ft[pid] = struct{}{}
-		}
-		ps := flatTree(findTree(buildTree(pt), q.Pid), 0) // descendants
-		for _, pid := range ps {
-			ft[pid] = struct{}{}
-		}
-		var cs []connection
-		for _, conn := range conns {
-			_, ok := ft[conn.self.pid]
-			if !ok {
-				_, ok = ft[conn.peer.pid]
-			}
-			if ok {
-				cs = append(cs, conn)
-			}
-		}
-		conns = cs
-	}
 
 	nm := map[string][]interface{}{}
 	em := map[string][]interface{}{}
@@ -132,40 +72,15 @@ func nodeGraph(ctx context.Context, dq *backend.DataQuery) backend.DataResponse 
 			}
 			pt[pid].Ppid = i
 		} else if conn.peer.pid == math.MaxInt32 { // peer is file, add node after all processes identified
-		} else if conn.self.pid == 0 { // ignore kernel
-		} else if conn.self.pid == 1 {
-			if q.Daemons {
-				pc := []interface{}{filepath.Base(pt[conn.peer.pid].Exec), conn.peer.pid.String(), pt[conn.peer.pid].Exec}
-				peer := fmt.Sprintf("%s[%s]", pc[:2]...)
-				nm[peer] = append(pc, procArc...)
-			}
-		} else if conn.peer.pid == 1 {
-			if q.Daemons {
-				sc := []interface{}{filepath.Base(pt[conn.self.pid].Exec), conn.self.pid.String(), pt[conn.self.pid].Exec}
-				self := fmt.Sprintf("%s[%s]", sc[:2]...)
-				nm[self] = append(sc, procArc...)
-			}
+		} else if conn.self.pid == 0 || conn.self.pid == 1 || conn.peer.pid == 0 || conn.peer.pid == 1 {
 		} else { // peer is process
-			var peerExec string
-			var arc []interface{}
-			if conn.peer.pid == 0 {
-				if !q.Kernel {
-					continue
-				}
-				peerExec = "kernel"
-				arc = kernArc
-			} else {
-				peerExec = filepath.Base(pt[conn.peer.pid].Exec)
-				arc = procArc
-			}
-
 			sc := []interface{}{filepath.Base(pt[conn.self.pid].Exec), conn.self.pid.String(), pt[conn.self.pid].Exec}
 			self := fmt.Sprintf("%s[%s]", sc[:2]...)
 			nm[self] = append(sc, procArc...)
 
-			pc := []interface{}{peerExec, conn.peer.pid.String(), pt[conn.peer.pid].Exec}
+			pc := []interface{}{filepath.Base(pt[conn.peer.pid].Exec), conn.peer.pid.String(), pt[conn.peer.pid].Exec}
 			peer := fmt.Sprintf("%s[%s]", pc[:2]...)
-			nm[peer] = append(pc, arc...)
+			nm[peer] = append(pc, procArc...)
 
 			t := conn.ftype
 			n := conn.name
@@ -190,78 +105,14 @@ func nodeGraph(ctx context.Context, dq *backend.DataQuery) backend.DataResponse 
 		}
 	}
 
-	if q.Files {
-		for i, conn := range conns {
-			i := Pid(math.MaxInt32 + i)
-			if conn.peer.pid == math.MaxInt32 { // peer is file
-				self := fmt.Sprintf("%s[%d]", filepath.Base(pt[conn.self.pid].Exec), conn.self.pid)
-				if _, ok := nm[self]; !ok {
-					continue
-				}
-
-				log.DefaultLogger.Debug("FILE NAME",
-					"pid", conn.self.pid.String(), // to format as int rather than float
-					"name", conn.name,
-				)
-
-				peer := conn.name
-				var dir, file string
-				var arc []interface{}
-				switch conn.ftype {
-				case "DIR":
-					dir = peer + string(filepath.Separator)
-					arc = dirArc
-				case "REG":
-					dir = filepath.Dir(peer)
-					file = filepath.Base(peer)
-					arc = fileArc
-				}
-				nm[peer] = append([]interface{}{dir, file, ""}, arc...)
-
-				em[fmt.Sprintf("%d->%s", conn.self.pid, conn.name)] = []interface{}{
-					self,
-					peer,
-					conn.ftype,
-					pt[conn.self.pid].Exec,
-				}
-
-				// create pseudo process to incorporate file node into process tree
-				pt[i] = &process{
-					Id: id{
-						Name: conn.name,
-						Pid:  i,
-					},
-					Props: Props{
-						Ppid: conn.self.pid,
-					},
-				}
-			}
-		}
-	}
-
 	nodes.Meta.Stats[0].Value = float64(len(nm))
 	edges.Meta.Stats[0].Value = float64(len(em))
 
-	// pids := make([]Pid, len(pt))
-	// i = 0
-	// for pid := range pt {
-	// 	pids[i] = pid
-	// 	i++
-	// }
-
-	// sort.Slice(pids, func(i, j int) bool {
-	// 	return pids[i] < pids[j]
-	// })
-
-	// for _, pid := range pids {
-	// for pid, p := range pt {
 	for _, pid := range flatTree(buildTree(pt), 0) {
 		p := pt[pid]
 		var id string
-		if pid < 0 || pid >= math.MaxInt32 { // host or file
+		if pid < 0 {
 			id = p.Id.Name
-		} else if pid == 0 {
-			id = "kernel[0]"
 		} else { // process
 			id = filepath.Base(p.Exec) + "[" + pid.String() + "]" // process
 		}
@@ -291,7 +142,7 @@ func nodeGraph(ctx context.Context, dq *backend.DataQuery) backend.DataResponse 
 }
 
 func frames() (nodes *data.Frame, edges *data.Frame) {
-	nodes = data.NewFrameOfFieldTypes("nodes", 0, data.FieldTypeString, data.FieldTypeString, data.FieldTypeString, data.FieldTypeString, data.FieldTypeFloat64, data.FieldTypeFloat64, data.FieldTypeFloat64, data.FieldTypeFloat64, data.FieldTypeFloat64)
+	nodes = data.NewFrameOfFieldTypes("nodes", 0, data.FieldTypeString, data.FieldTypeString, data.FieldTypeString, data.FieldTypeString, data.FieldTypeFloat64, data.FieldTypeFloat64)
 	nodes.SetMeta(&data.FrameMeta{
 		Path:                   "process_node",
 		PreferredVisualization: data.VisType("nodeGraph"),
@@ -301,17 +152,17 @@ func frames() (nodes *data.Frame, edges *data.Frame) {
 			},
 		}},
 	})
-	nodes.SetFieldNames("id", "mainStat", "secondaryStat", "title", "arc__host", "arc__kernel", "arc__process", "arc__directory", "arc__file")
+	nodes.SetFieldNames("id", "mainStat", "secondaryStat", "title", "arc__host", "arc__process")
 	nodes.Fields[0].Config = &data.FieldConfig{
 		DisplayName: "ID",
 		Path:        "id",
 	}
 	nodes.Fields[1].Config = &data.FieldConfig{
-		DisplayName: "Command/Service/Directory",
+		DisplayName: "Command/Service",
 		Path:        "command",
 	}
 	nodes.Fields[2].Config = &data.FieldConfig{
-		DisplayName: "Process/Host/File",
+		DisplayName: "Process/Host",
 		Path:        "process",
 	}
 	nodes.Fields[3].Config = &data.FieldConfig{
@@ -324,24 +175,9 @@ func frames() (nodes *data.Frame, edges *data.Frame) {
 		Path:        "host",
 	}
 	nodes.Fields[5].Config = &data.FieldConfig{
-		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "magenta"},
-		DisplayName: "Kernel",
-		Path:        "kernel",
-	}
-	nodes.Fields[6].Config = &data.FieldConfig{
 		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "blue"},
 		DisplayName: "Process",
 		Path:        "process",
-	}
-	nodes.Fields[7].Config = &data.FieldConfig{
-		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "green"},
-		DisplayName: "Directory",
-		Path:        "directory",
-	}
-	nodes.Fields[8].Config = &data.FieldConfig{
-		Color:       map[string]interface{}{"mode": "fixed", "fixedColor": "yellow"},
-		DisplayName: "File",
-		Path:        "file",
 	}
 
 	edges = data.NewFrameOfFieldTypes("edges", 0, data.FieldTypeString, data.FieldTypeString, data.FieldTypeString, data.FieldTypeString, data.FieldTypeString)

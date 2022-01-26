@@ -263,16 +263,3 @@ func depthTree(t processTree) int {
 	}
 	return depth
 }
-
-func findTree(t processTree, pid Pid) processTree {
-	if t, ok := t[pid]; ok {
-		return t
-	}
-	for _, t := range t {
-		if findTree(t, pid) != nil {
-			return t
-		}
-	}
-
-	return nil
-}

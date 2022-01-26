@@ -3,7 +3,6 @@
 package process
 
 import (
-	"math"
 	"net"
 	"os"
 	"runtime"
@@ -140,17 +139,6 @@ func connections(pt processTable) []connection {
 			fd := conn.Descriptor
 			switch conn.Type {
 			case "NUL": // ignore /dev/null connection endpoints
-			case "DIR", "REG", "PSXSHM":
-				connm[[4]int{int(pid), int(fd), math.MaxInt32, 0}] = connection{
-					ftype: conn.Type,
-					name:  conn.Name,
-					self: endpoint{
-						pid: pid,
-					},
-					peer: endpoint{
-						pid: math.MaxInt32,
-					},
-				}
 			case "systm":
 				connm[[4]int{int(pid), int(fd), 0, 0}] = connection{
 					ftype: conn.Type,
@@ -159,7 +147,8 @@ func connections(pt processTable) []connection {
 						pid: pid,
 					},
 				}
-			case "FIFO", "PIPE", "TCP", "UDP", "unix":
+			case "DIR", "REG", "PSXSHM",
+				"FIFO", "PIPE", "TCP", "UDP", "unix":
 				if conn.Peer == "" {
 					continue
 				}
