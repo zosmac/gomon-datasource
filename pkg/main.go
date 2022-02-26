@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 
-	"github.com/zosmac/grafana-plugins/gomon-datasource/pkg/process"
+	"github.com/zosmac/gomon-datasource/pkg/plugin"
 )
 
 // go generate creates version.go to set vmmp and package dependencies for version.
@@ -21,7 +21,7 @@ const (
 )
 
 func main() {
-	log.DefaultLogger.Info("Starting gomon process nodegraph plugin backend data source",
+	log.DefaultLogger.Info("Starting gomon process node graph plugin backend data source",
 		"plugin", executable,
 		"version", vmmp,
 		"build_date", buildDate,
@@ -29,7 +29,7 @@ func main() {
 	)
 
 	if err := datasource.Manage(pluginID,
-		process.NewDataSourceInstance,
+		plugin.NewDataSourceInstance,
 		datasource.ManageOpts{},
 	); err != nil {
 		log.DefaultLogger.Error("Startup failed",

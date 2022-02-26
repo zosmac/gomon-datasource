@@ -14,7 +14,7 @@ import (
 // hostCommand builds a host specific command line for lsof.
 func hostCommand() *exec.Cmd {
 	cmdline := strings.Fields(fmt.Sprintf("lsof -l -n -P -d ^cwd,^rtd,^txt -r%dm====%%T====", 10))
-	cmd := exec.Command(cmdline[0], cmdline[1:]...)
+	cmd := executable.Command(cmdline[0], cmdline[1:]...)
 
 	dirname := filepath.Join("/proc", "self", "fd")
 	if dir, err := os.Open(dirname); err == nil {

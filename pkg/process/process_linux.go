@@ -25,8 +25,8 @@ var (
 	}
 )
 
-// props captures the properties of a process.
-func (pid Pid) props() (id, Props) {
+// properties captures the properties of a process.
+func (pid Pid) properties() (id, Props) {
 	buf, err := os.ReadFile(filepath.Join("/proc", pid.String(), "stat"))
 	if err != nil {
 		log.DefaultLogger.Error("Cannot read /proc/pid/stat file",
@@ -69,7 +69,7 @@ func (pid Pid) commandLine() CommandLine {
 		return cl
 	}
 
-	cl.Exec, _ = os.Readlink(filepath.Join("/proc", pid.String(), "exe"))
+	cl.Executable, _ = os.Readlink(filepath.Join("/proc", pid.String(), "exe"))
 
 	if arg, err := os.ReadFile(filepath.Join("/proc", pid.String(), "cmdline")); err == nil {
 		cl.Args = strings.Split(string(arg[:len(arg)-2]), "\000")

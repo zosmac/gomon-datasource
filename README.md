@@ -2,7 +2,7 @@ Copyright © 2021 The Gomon Project.
 
 # **Welcome to the *Gomon Data Source Plugin* for *Grafana***
 
-![gomon](assets/gopher.png)
+![](assets/gopher.png)
 
 - [**Welcome to the *Gomon Data Source Plugin* for *Grafana***](#welcome-to-the-gomon-data-source-plugin-for-grafana)
 - [Overview](#overview)
@@ -14,8 +14,7 @@ Copyright © 2021 The Gomon Project.
   - [Authorize the Data Source Backend](#authorize-the-data-source-backend)
   - [Install the Gomon Data Source Plugin](#install-the-gomon-data-source-plugin)
   - [Restart the Grafana Server](#restart-the-grafana-server)
-- [Visualize!](#visualize)
-  - [Gomon Data Source Dashboard](#gomon-data-source-dashboard)
+- [Explore!](#explore)
 
 # Overview
 
@@ -72,7 +71,7 @@ sudo chmod u+s dist/gomon-datasource-$(go env GOOS)-$(go env GOARCH)
 The Magefile includes an install target that
 - copies a custom.ini configuration file to the `$GRAFANA_DIR/conf` that sets plugins:allow_loading_unsigned_plugins = zosmac-gomon-datasource
 - installs the gomon-datasource data source
-- installs the gomon-process-nodegraph dashboard
+- installs the gomon-process-node-graph dashboard
 ```zsh
 mage -v install
 ```
@@ -84,8 +83,6 @@ sudo kill $(pgrep grafana-server)
 $GRAFANA_DIR/bin/$(go env GOOS)-$(go env GOARCH)/grafana-server
 ```
 
-# Visualize!
+# Explore!
 
-## Gomon Data Source Dashboard
-
-[<img src="assets/dashboard.png">](http://localhost:3000)
+![](assets/dashboard.png)

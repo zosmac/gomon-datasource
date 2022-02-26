@@ -24,8 +24,8 @@ var (
 	}
 )
 
-// props captures the properties of a process.
-func (pid Pid) props() (id, Props) {
+// properties captures the properties of a process.
+func (pid Pid) properties() (Id, Properties) {
 	var bsi C.struct_proc_bsdshortinfo
 	if n := C.proc_pidinfo(
 		C.int(pid),
@@ -34,14 +34,14 @@ func (pid Pid) props() (id, Props) {
 		unsafe.Pointer(&bsi),
 		C.int(C.PROC_PIDT_SHORTBSDINFO_SIZE),
 	); n != C.int(C.PROC_PIDT_SHORTBSDINFO_SIZE) {
-		return id{Pid: pid}, Props{}
+		return Id{Pid: pid}, Properties{}
 	}
 
-	return id{
+	return Id{
 			Name: C.GoString(&bsi.pbsi_comm[0]),
 			Pid:  pid,
 		},
-		Props{
+		Properties{
 			Ppid:        Pid(bsi.pbsi_ppid),
 			Pgid:        int(bsi.pbsi_pgid),
 			UID:         int(bsi.pbsi_uid),
@@ -78,11 +78,11 @@ func (pid Pid) commandLine() CommandLine {
 
 	l := int(*(*uint32)(unsafe.Pointer(&buf[0])))
 	ss := bytes.FieldsFunc(buf[4:size], func(r rune) bool { return r == 0 })
-	var exec string
+	var executable string
 	var args, envs []string
 	for i, s := range ss {
 		if i == 0 {
-			exec = string(s)
+			executable = string(s)
 		} else if i <= l {
 			args = append(args, string(s))
 		} else {
@@ -91,9 +91,9 @@ func (pid Pid) commandLine() CommandLine {
 	}
 
 	cl = CommandLine{
-		Exec: exec,
-		Args: args,
-		Envs: envs,
+		Executable: executable,
+		Args:       args,
+		Envs:       envs,
 	}
 	clLock.Lock()
 	clMap[pid] = cl

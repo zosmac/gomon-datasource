@@ -71,7 +71,7 @@ var (
 	oldPids map[Pid]struct{}
 
 	// endpoints of processes periodically populated by lsof.
-	epMap  = map[Pid]Connections{}
+	epMap  = map[Pid][]Connection{}
 	epLock sync.RWMutex
 )
 
@@ -86,8 +86,8 @@ type (
 	// Pid is the identifier for a process.
 	Pid int
 
-	// id identifies the process.
-	id struct {
+	// Id identifies the process.
+	Id struct {
 		Name      string    `json:"name" gomon:"property"`
 		Pid       Pid       `json:"pid" gomon:"property"`
 		Starttime time.Time `json:"starttime" gomon:"property"`
@@ -95,13 +95,13 @@ type (
 
 	// CommandLine contains a process' command line arguments.
 	CommandLine struct {
-		Exec string   `json:"exec" gomon:"property"`
-		Args []string `json:"args" gomon:"property"`
-		Envs []string `json:"envs" gomon:"property"`
+		Executable string   `json:"executable" gomon:"property"`
+		Args       []string `json:"args" gomon:"property"`
+		Envs       []string `json:"envs" gomon:"property"`
 	}
 
-	// Props defines process properties.
-	Props struct {
+	// Properties defines process properties.
+	Properties struct {
 		Ppid        Pid    `json:"ppid" gomon:"property"`
 		Pgid        int    `json:"pgid,omitempty" gomon:"property,,!windows"`
 		Tgid        int    `json:"tgid,omitempty" gomon:"property,,linux"`
@@ -114,30 +114,30 @@ type (
 		CommandLine `gomon:""`
 	}
 
-	// Connection represents a process connection to a data source.
+	Endpoint struct {
+		Name string `json:"name" gomon:"property"`
+		Pid  Pid    `json:"pid" gomon:"property"`
+	}
+
+	// Connection represents an inter-process or host/data connection
 	Connection struct {
-		Descriptor int    `json:"descriptor" gomon:"property"`
-		Type       string `json:"type" gomon:"property"`
-		Name       string `json:"name" gomon:"property"`
-		Self       string `json:"self" gomon:"property"`
-		Peer       string `json:"peer" gomon:"property"`
+		Type string   `json:"type" gomon:"property"`
+		Self Endpoint `json:"self" gomon:"property"`
+		Peer Endpoint `json:"peer" gomon:"property"`
 	}
 
-	// Connections records all the process' data connections.
-	Connections []Connection
-
-	// process contains a process' properties and connections.
-	process struct {
-		Id          id `json:"id" gomon:""`
-		Props       `gomon:""`
-		Connections `json:"connections" gomon:""`
+	// Process contains a process' properties and connections.
+	Process struct {
+		Id          `json:"id" gomon:""`
+		Properties  `gomon:""`
+		Connections []Connection `json:"connections" gomon:""`
 	}
 
-	// processTable defines a process table as a map of pids to processes.
-	processTable map[Pid]*process
+	// ProcessTable defines a process table as a map of pids to processes.
+	ProcessTable map[Pid]*Process
 
-	// processTree organizes the process into a hierarchy
-	processTree map[Pid]processTree
+	// ProcessTree organizes the processes into a hierarchy.
+	ProcessTree map[Pid]ProcessTree
 )
 
 // lookup retrieves and caches name for id.
@@ -158,12 +158,12 @@ func (pid Pid) String() string {
 	return strconv.Itoa(int(pid))
 }
 
-func (p *process) ID() string {
+func (p *Process) ID() string {
 	return p.Id.Name + "[" + p.Id.Pid.String() + "]"
 }
 
-// buildTable builds a process table and captures current process state
-func buildTable() processTable {
+// BuildTable builds a process table and captures current process state
+func BuildTable() ProcessTable {
 	seteuid()
 	defer setuid()
 
@@ -172,22 +172,17 @@ func buildTable() processTable {
 		panic(fmt.Errorf("could not build process table %v", err))
 	}
 
-	var epm map[Pid]Connections
 	epLock.RLock()
-	if len(epMap) > 0 {
-		epm = epMap
-	}
-	epLock.RUnlock()
-
-	pt := make(map[Pid]*process, len(pids))
+	pt := make(map[Pid]*Process, len(pids))
 	for _, pid := range pids {
-		id, props := pid.props()
-		pt[pid] = &process{
+		id, props := pid.properties()
+		pt[pid] = &Process{
 			Id:          id,
-			Props:       props,
-			Connections: epm[pid],
+			Properties:  props,
+			Connections: epMap[pid],
 		}
 	}
+	epLock.RUnlock()
 
 	newPids := make(map[Pid]struct{}, len(pids))
 	for pid := range pt {
@@ -204,8 +199,8 @@ func buildTable() processTable {
 	return pt
 }
 
-func buildTree(pt processTable) processTree {
-	t := processTree{}
+func BuildTree(pt ProcessTable) ProcessTree {
+	t := ProcessTree{}
 
 	for pid, p := range pt {
 		var ancestors []Pid
@@ -218,17 +213,17 @@ func buildTree(pt processTable) processTree {
 	return t
 }
 
-func addPid(t processTree, ancestors []Pid) {
+func addPid(t ProcessTree, ancestors []Pid) {
 	if len(ancestors) == 0 {
 		return
 	}
 	if _, ok := t[ancestors[0]]; !ok {
-		t[ancestors[0]] = processTree{}
+		t[ancestors[0]] = ProcessTree{}
 	}
 	addPid(t[ancestors[0]], ancestors[1:])
 }
 
-func flatTree(t processTree, indent int) []Pid {
+func FlatTree(t ProcessTree, indent int) []Pid {
 	var flat []Pid
 
 	pids := make([]Pid, len(t))
@@ -247,13 +242,13 @@ func flatTree(t processTree, indent int) []Pid {
 
 	for _, pid := range pids {
 		flat = append(flat, pid)
-		flat = append(flat, flatTree(t[pid], indent+2)...)
+		flat = append(flat, FlatTree(t[pid], indent+2)...)
 	}
 
 	return flat
 }
 
-func depthTree(t processTree) int {
+func depthTree(t ProcessTree) int {
 	depth := 0
 	for _, tree := range t {
 		dt := depthTree(tree) + 1
@@ -262,4 +257,17 @@ func depthTree(t processTree) int {
 		}
 	}
 	return depth
+}
+
+func FindTree(t ProcessTree, pid Pid) ProcessTree {
+	if t, ok := t[pid]; ok {
+		return t
+	}
+	for _, t := range t {
+		if FindTree(t, pid) != nil {
+			return t
+		}
+	}
+
+	return nil
 }

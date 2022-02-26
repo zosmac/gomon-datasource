@@ -7,7 +7,7 @@
   "backend": true,
   "executable": "gomon-datasource",
   "info": {
-    "description": "Gomon Process Nodegraph Data Source",
+    "description": "Gomon Process Node Graph Data Source",
     "author": {
       "name": "The Gomon Project",
       "url": "https://github.com/zosmac"

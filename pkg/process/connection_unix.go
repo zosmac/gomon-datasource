@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"regexp"
 	"strconv"
@@ -41,6 +42,34 @@ var (
 		}
 		return g
 	}()
+
+	// zoneregex determines if a link local address embeds a zone index.
+	zoneregex = regexp.MustCompile(`^((fe|FE)80):(\d{1,2})(::.*)$`)
+
+	// Zones maps local ip addresses to their network zones.
+	zones = func() map[string]string {
+		zm := map[string]string{}
+		if nis, err := net.Interfaces(); err == nil {
+			for _, ni := range nis {
+				zm[strconv.FormatUint(uint64(ni.Index), 16)] = ni.Name
+				if addrs, err := ni.Addrs(); err == nil {
+					for _, addr := range addrs {
+						if ip, _, err := net.ParseCIDR(addr.String()); err == nil {
+							zm[ip.String()] = ni.Name
+						}
+					}
+				}
+				if addrs, err := ni.MulticastAddrs(); err == nil {
+					for _, addr := range addrs {
+						if ip, _, err := net.ParseCIDR(addr.String()); err == nil {
+							zm[ip.String()] = ni.Name
+						}
+					}
+				}
+			}
+		}
+		return zm
+	}()
 )
 
 const (
@@ -72,6 +101,20 @@ func init() {
 	}
 }
 
+func addZone(addr string) string {
+	ip, port, _ := net.SplitHostPort(addr)
+	match := zoneregex.FindStringSubmatch(ip)
+	if match != nil { // strip the zone index from the ipv6 link local address
+		ip = match[1] + match[4]
+		if zone, ok := zones[match[3]]; ok {
+			ip += "%" + zone
+		}
+	} else if zone, ok := zones[ip]; ok {
+		ip += "%" + zone
+	}
+	return net.JoinHostPort(ip, port)
+}
+
 // lsofCommand starts the lsof command to capture process connections.
 func lsofCommand() error {
 	cmd := hostCommand() // perform OS specific customizations for command
@@ -84,9 +127,8 @@ func lsofCommand() error {
 		return fmt.Errorf("start failed %w", err)
 	}
 
-	log.DefaultLogger.Info("start command to capture open process descriptors",
-		"command", cmd.String(),
-		"pid", strconv.Itoa(cmd.Process.Pid), // to format as int rather than float
+	log.DefaultLogger.Info("start command to capture each processes' open descriptors",
+		"command", fmt.Sprintf("%s[%d]", cmd.String(), cmd.Process.Pid),
 	)
 
 	go parseOutput(stdout)
@@ -96,10 +138,13 @@ func lsofCommand() error {
 
 // parseOutput reads the stdout of the command.
 func parseOutput(stdout io.ReadCloser) {
-	epm := map[Pid]Connections{}
+	epm := map[Pid][]Connection{}
 
 	sc := bufio.NewScanner(stdout)
+	var i Pid
 	for sc.Scan() {
+		i++
+
 		match := regex.FindStringSubmatch(sc.Text())
 		if len(match) == 0 || match[0] == "" {
 			continue
@@ -110,7 +155,7 @@ func parseOutput(stdout io.ReadCloser) {
 		if trailer := match[rgxgroups[groupTrailer]]; trailer != "" {
 			epLock.Lock()
 			epMap = epm
-			epm = map[Pid]Connections{}
+			epm = map[Pid][]Connection{}
 			epLock.Unlock()
 			continue
 		}
@@ -127,15 +172,22 @@ func parseOutput(stdout io.ReadCloser) {
 		var self, peer string
 
 		switch fdType {
-		case "LINK", "CHAN", "FSEVENT", "KQUEUE", "NEXUS", "NPOLICY",
-			"ndrv", "unknown":
-		case "BLK", "DIR", "REG", "PSXSHM":
-			self = name
+		case "FSEVENT", "NEXUS", "NPOLICY", "unknown":
+		case "ndrv", "systm":
+			self = device
+			peer = name
+		case "CHAN":
+			fdType = device
+			peer = name
+		case "BLK", "DIR", "LINK", "REG", "PSXSHM", "KQUEUE":
 			peer = name
 		case "CHR":
+			peer = name
 			if name == os.DevNull {
 				fdType = "NUL"
 			}
+		case "key", "PSXSEM":
+			self = device
 		case "FIFO":
 			if mode == 'w' {
 				peer = name
@@ -144,48 +196,30 @@ func parseOutput(stdout io.ReadCloser) {
 			}
 		case "PIPE", "unix":
 			self = device
-			peer = name
-			if len(peer) > 2 && peer[:2] == "->" {
-				peer = peer[2:] // strip "->"
+			if len(name) > 2 && name[:2] == "->" {
+				peer = name[2:] // strip "->"
 			}
-			name = self + "->" + peer
 		case "IPv4", "IPv6":
 			fdType = node
 			split := strings.Split(name, " ")
 			split = strings.Split(split[0], "->")
-			self = split[0]
+			self = addZone(split[0])
 			if len(split) > 1 {
-				peer = split[1]
+				peer = addZone(split[1])
 			}
-		case "systm":
-			self = device
-		case "key":
-			name = device
-			self = device
-		case "PSXSEM":
-			self = device
-			peer = device
 		}
 
 		ep := Connection{
-			Descriptor: fd,
-			Type:       fdType,
-			Name:       name,
-			Self:       self,
-			Peer:       peer,
+			Type: fdType,
+			Self: Endpoint{Name: self, Pid: Pid(pid)},
+			Peer: Endpoint{Name: peer},
 		}
 
-		log.DefaultLogger.Debug("Endpoint",
-			"name", name,
-			"command", command,
-			"pid", strconv.Itoa(pid), // to format as int rather than float
-			"fd", strconv.Itoa(fd), // to format as int rather than float
-			"type", fdType,
-			"self", self,
-			"peer", peer,
-		)
+		log.DefaultLogger.Debug(fmt.Sprintf("%s[%d:%d] %s %s %s", command, pid, fd, fdType, self, peer))
 
-		epm[Pid(pid)] = append(epm[Pid(pid)], ep)
+		if fdType != "NUL" {
+			epm[Pid(pid)] = append(epm[Pid(pid)], ep)
+		}
 	}
 
 	panic(fmt.Errorf("stdout closed %v", sc.Err()))
