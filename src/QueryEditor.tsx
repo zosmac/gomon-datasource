@@ -4,13 +4,13 @@ import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from './DataSource';
 import { MyQuery, MyDataSourceOptions, defaultQuery } from './types';
 
-export type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
+export type Properties = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
-export function QueryEditor(props: Props) {
+export function QueryEditor(props: Properties) {
   return <></>;
 }
 
-export function ExploreQueryEditor(props: Props) {
+export function ExploreQueryEditor(props: Properties) {
   const { query } = props;
   const { node } = defaults(query, defaultQuery);
   const { process, host, data } = node;

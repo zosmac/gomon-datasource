@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -21,17 +22,15 @@ import (
 var (
 	// regex for parsing lsof output lines from lsof command.
 	regex = regexp.MustCompile(
-		`^(?:(?P<header>COMMAND.*)|====(?P<trailer>\d\d:\d\d:\d\d)====.*|` +
-			`(?P<command>[^ ]+)[ ]+` +
-			`(?P<pid>[^ ]+)[ ]+` +
-			`(?:[^ ]+)[ ]+` + // USER
+		`^(?P<command>[^ ]+)[ ]+` +
+			`(?P<pid>\d+)[ ]+` +
+			`(?:\d+)[ ]+` + // USER
 			`(?:(?P<fd>\d+)|fp\.|mem|cwd|rtd)` +
 			`(?P<mode> |[rwu-][rwuNRWU]?)[ ]+` +
 			`(?P<type>(?:[^ ]+|))[ ]+` +
 			`(?P<device>(?:0x[0-9a-f]+|\d+,\d+|kpipe|upipe|))[ ]+` +
 			`(?:[^ ]+|)[ ]+` + // SIZE/OFF
-			`(?P<node>(?:\d+|TCP|UDP|))[ ]+` +
-			`(?P<name>.*))$`,
+			`(?P<node>(?:[^ ]+|))`,
 	)
 
 	// rgxgroups maps names of capture groups to indices.
@@ -74,8 +73,6 @@ var (
 
 const (
 	// lsof line regular expressions named capture groups.
-	groupHeader  captureGroup = "header"
-	groupTrailer captureGroup = "trailer"
 	groupCommand captureGroup = "command"
 	groupPid     captureGroup = "pid"
 	groupFd      captureGroup = "fd"
@@ -83,7 +80,6 @@ const (
 	groupType    captureGroup = "type"
 	groupDevice  captureGroup = "device"
 	groupNode    captureGroup = "node"
-	groupName    captureGroup = "name"
 )
 
 type (
@@ -127,36 +123,44 @@ func lsofCommand() error {
 		return fmt.Errorf("start failed %w", err)
 	}
 
-	log.DefaultLogger.Info("start command to capture each processes' open descriptors",
-		"command", fmt.Sprintf("%s[%d]", cmd.String(), cmd.Process.Pid),
-	)
+	log.DefaultLogger.Info(fmt.Sprintf("start [%d] %q", cmd.Process.Pid, cmd.String()))
 
-	go parseOutput(stdout)
+	go parseLsof(stdout)
 
 	return nil
 }
 
-// parseOutput reads the stdout of the command.
-func parseOutput(stdout io.ReadCloser) {
+// parseLsof parses each line of stdout from the command.
+func parseLsof(stdout io.ReadCloser) {
+	defer func() {
+		if r := recover(); r != nil {
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			buf = buf[:n]
+			log.DefaultLogger.Error("parseLsof() panicked",
+				"panic", r,
+				"stacktrace", string(buf),
+			)
+		}
+	}()
+
 	epm := map[Pid][]Connection{}
-
+	var nameIndex int
 	sc := bufio.NewScanner(stdout)
-	var i Pid
 	for sc.Scan() {
-		i++
-
-		match := regex.FindStringSubmatch(sc.Text())
-		if len(match) == 0 || match[0] == "" {
+		text := sc.Text()
+		if strings.HasPrefix(text, "COMMAND") {
+			nameIndex = strings.Index(text, "NAME")
 			continue
-		}
-		if header := match[rgxgroups[groupHeader]]; header != "" {
-			continue
-		}
-		if trailer := match[rgxgroups[groupTrailer]]; trailer != "" {
+		} else if strings.HasPrefix(text, "====") {
 			epLock.Lock()
 			epMap = epm
 			epm = map[Pid][]Connection{}
 			epLock.Unlock()
+			continue
+		}
+		match := regex.FindStringSubmatch(text[:nameIndex])
+		if len(match) == 0 || match[0] == "" {
 			continue
 		}
 
@@ -167,58 +171,64 @@ func parseOutput(stdout io.ReadCloser) {
 		fdType := match[rgxgroups[groupType]]
 		device := match[rgxgroups[groupDevice]]
 		node := match[rgxgroups[groupNode]]
-		name := match[rgxgroups[groupName]]
+		peer := text[nameIndex:]
 
-		var self, peer string
+		var self string
 
 		switch fdType {
-		case "FSEVENT", "NEXUS", "NPOLICY", "unknown":
-		case "ndrv", "systm":
-			self = device
-			peer = name
+		case "REG":
+		case "BLK", "CHR", "DIR", "LINK", "PSXSHM", "KQUEUE":
+		case "FSEVENT", "NEXUS", "NPOLICY", "ndrv", "systm", "unknown":
 		case "CHAN":
 			fdType = device
-			peer = name
-		case "BLK", "DIR", "LINK", "REG", "PSXSHM", "KQUEUE":
-			peer = name
-		case "CHR":
-			peer = name
-			if name == os.DevNull {
-				fdType = "NUL"
-			}
 		case "key", "PSXSEM":
-			self = device
+			peer = device
 		case "FIFO":
-			if mode == 'w' {
-				peer = name
-			} else {
-				self = name
+			if mode != 'w' {
+				self = peer
+				peer = ""
 			}
 		case "PIPE", "unix":
 			self = device
-			if len(name) > 2 && name[:2] == "->" {
-				peer = name[2:] // strip "->"
+			if len(peer) > 2 && peer[:2] == "->" {
+				peer = peer[2:] // strip "->"
 			}
 		case "IPv4", "IPv6":
 			fdType = node
-			split := strings.Split(name, " ")
+			split := strings.Split(peer, " ")
 			split = strings.Split(split[0], "->")
-			self = addZone(split[0])
 			if len(split) > 1 {
+				self = addZone(split[0])
 				peer = addZone(split[1])
+			} else {
+				self = device
+				peer = addZone((split[0]))
 			}
 		}
 
-		ep := Connection{
-			Type: fdType,
-			Self: Endpoint{Name: self, Pid: Pid(pid)},
-			Peer: Endpoint{Name: peer},
+		if self == "" && peer == "" {
+			peer = fdType // treat like data connection
 		}
 
 		log.DefaultLogger.Debug(fmt.Sprintf("%s[%d:%d] %s %s %s", command, pid, fd, fdType, self, peer))
 
-		if fdType != "NUL" {
-			epm[Pid(pid)] = append(epm[Pid(pid)], ep)
+		if peer != os.DevNull {
+			epm[Pid(pid)] = append(epm[Pid(pid)],
+				Connection{
+					Type: fdType,
+					Self: Endpoint{Name: self, Pid: Pid(pid)},
+					Peer: Endpoint{Name: peer},
+				},
+			)
+		}
+		if fdType == "unix" && peer[:2] != "0x" {
+			epm[Pid(pid)] = append(epm[Pid(pid)],
+				Connection{
+					Type: fdType,
+					Self: Endpoint{Pid: Pid(pid)},
+					Peer: Endpoint{Name: peer},
+				},
+			)
 		}
 	}
 

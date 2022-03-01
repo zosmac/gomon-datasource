@@ -95,7 +95,7 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.DefaultLogger.Error("QueryData panicked",
+			log.DefaultLogger.Error("QueryData() panicked",
 				"panic", r,
 				"stacktrace", string(buf),
 			)

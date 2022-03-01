@@ -25,17 +25,6 @@ import (
 )
 
 var (
-	// host/proc specify the arc for the circle drawn around a node.
-	// Each arc has a specific color set in its field metadata to create a circle that identifies the node type.
-	hostArc = []interface{}{1.0, 0.0, 0.0, 0.0} // red
-	procArc = []interface{}{0.0, 1.0, 0.0, 0.0} // blue
-	dataArc = []interface{}{0.0, 0.0, 1.0, 0.0} // yellow
-	kernArc = []interface{}{0.0, 0.0, 0.0, 1.0} // magenta
-	red     = map[string]interface{}{"mode": "fixed", "fixedColor": "red"}
-	blue    = map[string]interface{}{"mode": "fixed", "fixedColor": "blue"}
-	yellow  = map[string]interface{}{"mode": "fixed", "fixedColor": "yellow"}
-	magenta = map[string]interface{}{"mode": "fixed", "fixedColor": "magenta"}
-
 	// hnMap caches resolver host name lookup.
 	hnMap  = map[string]string{}
 	hnLock sync.Mutex
@@ -44,15 +33,28 @@ var (
 	queryRegex = regexp.MustCompile(
 		`^(?P<executable>[^\[]*)\[(?P<pid>\d+)\]$`,
 	)
+
+	// host/proc specify the arc for the circle drawn around a node.
+	// Each arc has a specific color set in its field metadata to create a circle that identifies the node type.
+	hostArc = []interface{}{1.0, 0.0, 0.0, 0.0, 0.0} // red
+	procArc = []interface{}{0.0, 1.0, 0.0, 0.0, 0.0} // blue
+	dataArc = []interface{}{0.0, 0.0, 1.0, 0.0, 0.0} // yellow
+	sockArc = []interface{}{0.0, 0.0, 0.0, 1.0, 0.0} // magenta
+	kernArc = []interface{}{0.0, 0.0, 0.0, 0.0, 1.0} // cyan
+	red     = map[string]interface{}{"mode": "fixed", "fixedColor": "red"}
+	blue    = map[string]interface{}{"mode": "fixed", "fixedColor": "blue"}
+	yellow  = map[string]interface{}{"mode": "fixed", "fixedColor": "yellow"}
+	magenta = map[string]interface{}{"mode": "fixed", "fixedColor": "magenta"}
+	cyan    = map[string]interface{}{"mode": "fixed", "fixedColor": "cyan"}
 )
 
 type (
 	// Pid alias for Pid in process package.
 	Pid = process.Pid
 
-	// query
+	// query from data source.
 	query struct {
-		pid  Pid
+		Pid
 		Node struct {
 			Process string `json:"process"`
 			Host    string `json:"host"`
@@ -69,7 +71,7 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.DefaultLogger.Error("NodeGraph panicked",
+			log.DefaultLogger.Error("NodeGraph() panicked",
 				"panic", r,
 				"stacktrace", string(buf),
 			)
@@ -87,15 +89,15 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 		return
 	}
 
-	ft := process.ProcessTable{}
+	ft := process.Table{}
 	pt := process.BuildTable()
 	process.Connections(pt)
 
-	if query.pid > 0 && pt[query.pid] == nil {
-		query.pid = 0 // reset to default
+	if query.Pid > 0 && pt[query.Pid] == nil {
+		query.Pid = 0 // reset to default
 	}
-	if query.pid > 0 { // build this process' "extended family"
-		ft = family(pt, query.pid)
+	if query.Pid > 0 { // build this process' "extended family"
+		ft = family(pt, query.Pid)
 	} else { // only consider non-daemon and remote host connected processes
 		for pid, p := range pt {
 			if p.Ppid > 1 {
@@ -125,37 +127,39 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 		fs[i] = ft[pid]
 	}
 
+	timestamp := time.Now()
+
 	nm := map[string][]interface{}{}
 	em := map[string][]interface{}{}
 
-	timestamp := time.Now()
-
 	for _, p := range fs {
 		for _, conn := range p.Connections {
-			if conn.Self.Pid == 0 || conn.Self.Pid == 1 || conn.Peer.Pid == 1 || // ignore kernel and launchd processes
+			if conn.Self.Pid == 0 || conn.Peer.Pid == 0 || // ignore kernel process
+				conn.Self.Pid == 1 || conn.Peer.Pid == 1 || // ignore launchd processes
 				conn.Self.Pid == conn.Peer.Pid || // ignore inter-process connections
-				query.pid == 0 && // for the "all process" query:
-					(conn.Peer.Pid == 0 || conn.Peer.Pid > math.MaxInt32) { // ignore kernel and data connections
-				continue
-			}
-
-			if _, ok := ft[conn.Peer.Pid]; !ok && conn.Peer.Pid > 0 && conn.Peer.Pid < math.MaxInt32 {
+				query.Pid == 0 && conn.Peer.Pid > math.MaxInt32 { // ignore data connections for the "all process" query
 				continue
 			}
 
 			self := shortname(pt, conn.Self.Pid)
 			nm[self] = append([]interface{}{
 				timestamp,
-				filepath.Base(pt[conn.Self.Pid].Executable),
+				shortname(pt, conn.Self.Pid),
 				conn.Self.Pid.String(),
 				longname(pt, conn.Self.Pid),
 				longname(pt, pt[conn.Self.Pid].Ppid),
 				fmt.Sprintf(`"process": %q`, self),
 			}, procArc...)
 
-			if conn.Peer.Pid < 0 { // external network connections
+			if conn.Peer.Pid < 0 { // peer is remote host or listener
 				host, port, _ := net.SplitHostPort(conn.Peer.Name)
 				peer := conn.Type + ":" + conn.Peer.Name
+
+				arc := hostArc
+				if conn.Self.Name[0:2] == "0x" { // listen socket
+					arc = sockArc
+				}
+
 				nm[peer] = append([]interface{}{
 					timestamp,
 					conn.Type + ":" + port,
@@ -163,7 +167,7 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 					host,
 					hostname(host),
 					fmt.Sprintf(`"host": %q`, host),
-				}, hostArc...)
+				}, arc...)
 
 				// flip the source and target to get Host shown to left in node graph
 				key := fmt.Sprintf("%s->%d", peer, conn.Self.Pid)
@@ -176,44 +180,17 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 						self,
 						fmt.Sprintf(`"host": %q`, host),
 						fmt.Sprintf(`"process": %q`, self),
-						map[string]struct{}{conn.Type + ":" + conn.Peer.Name + "->" + conn.Self.Name: {}},
+						map[string]struct{}{peer + "->" + conn.Self.Name: {}},
 					}
 				}
-
-				// create pseudo process to incorporate host node into process tree
-				ft[conn.Peer.Pid] = &process.Process{
-					Id: process.Id{
-						Name: peer,
-						Pid:  conn.Peer.Pid,
-					},
-				}
-			} else if conn.Peer.Pid == 0 {
-				ft[0] = pt[0]
-				peer := "kernel[0]"
-				nm[peer] = append([]interface{}{
-					timestamp,
-					"kernel",
-					"0",
-					peer,
-					"",
-					fmt.Sprintf(`"process": %q`, peer),
-				}, kernArc...)
-
-				key := fmt.Sprintf("%d->0", conn.Self.Pid)
-				if e, ok := em[key]; ok {
-					e[5].(map[string]struct{})[conn.Type+":"+conn.Self.Name+"->"+conn.Peer.Name] = struct{}{}
-				} else {
-					em[key] = []interface{}{
-						timestamp,
-						self,
-						peer,
-						fmt.Sprintf(`"process": %q`, self),
-						fmt.Sprintf(`"process": %q`, peer),
-						map[string]struct{}{conn.Type + ":" + conn.Self.Name + "->" + conn.Peer.Name: {}},
-					}
-				}
-			} else if conn.Peer.Pid > math.MaxInt32 {
+			} else if conn.Peer.Pid > math.MaxInt32 { // peer is data
 				peer := conn.Type + ":" + conn.Peer.Name
+
+				arc := dataArc
+				if conn.Type != "REG" && conn.Type != "DIR" {
+					arc = kernArc
+				}
+
 				nm[peer] = append([]interface{}{
 					timestamp,
 					conn.Type,
@@ -221,7 +198,7 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 					peer,
 					self,
 					fmt.Sprintf(`"data": %q`, url.QueryEscape(peer)),
-				}, dataArc...)
+				}, arc...)
 
 				key := fmt.Sprintf("%d->%s", conn.Self.Pid, peer)
 				if e, ok := em[key]; ok {
@@ -236,19 +213,11 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 						map[string]struct{}{self + "->" + peer: {}},
 					}
 				}
-
-				// create pseudo process to incorporate data node into process tree
-				ft[conn.Peer.Pid] = &process.Process{
-					Id: process.Id{
-						Name: peer,
-						Pid:  conn.Peer.Pid,
-					},
-				}
-			} else {
+			} else { // peer is process
 				peer := shortname(pt, conn.Peer.Pid)
 				nm[peer] = append([]interface{}{
 					timestamp,
-					filepath.Base(pt[conn.Peer.Pid].Executable),
+					shortname(pt, conn.Peer.Pid),
 					conn.Peer.Pid.String(),
 					longname(pt, conn.Peer.Pid),
 					longname(pt, pt[conn.Peer.Pid].Ppid),
@@ -263,6 +232,7 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 					p2s = conn.Type + ":" + conn.Peer.Name + "->" + conn.Self.Name
 				}
 
+				// show bidirectional connection only once
 				key := fmt.Sprintf("%d->%d", conn.Self.Pid, conn.Peer.Pid)
 				yek := fmt.Sprintf("%d->%d", conn.Peer.Pid, conn.Self.Pid)
 
@@ -297,30 +267,8 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 	edges.Meta.Stats[0].Value = float64(len(em))
 	resp.Frames = data.Frames{nodes, edges}
 
-	for pid, p := range ft {
-		var id string
-		if pid < 0 || pid > math.MaxInt32 { // host or data
-			id = p.Id.Name
-		} else if pid == 0 {
-			id = "kernel[0]"
-		} else { // process
-			id = shortname(pt, pid)
-		}
-		if values, ok := nm[id]; ok {
-			log.DefaultLogger.Debug("Peer node found",
-				"pid", pid.String(), // to format as int rather than float
-				"node", id,
-				"values", values,
-			)
-			nodes.AppendRow(append([]interface{}{id}, values...)...)
-			delete(nm, id)
-		}
-	}
-	for id, node := range nm {
-		log.DefaultLogger.Error("UNRESOLVED EXTRA NODE!!!",
-			"id", id,
-			"node", node,
-		)
+	for id, n := range nm {
+		nodes.AppendRow(append([]interface{}{id}, n...)...)
 	}
 
 	for id, e := range em {
@@ -347,7 +295,7 @@ func parseQuery(message json.RawMessage) (query query, err error) {
 	}
 
 	log.DefaultLogger.Info("Node Graph query properties",
-		"pid", query.pid,
+		"pid", query.Pid,
 		"process", query.Node.Process,
 		"host", query.Node.Host,
 		"data", query.Node.Data,
@@ -359,7 +307,7 @@ func parseQuery(message json.RawMessage) (query query, err error) {
 		executable := match[1]
 		pid, err := strconv.Atoi(match[2])
 		if err == nil {
-			query.pid = Pid(pid)
+			query.Pid = Pid(pid)
 		}
 		log.DefaultLogger.Info(fmt.Sprintf("process: %s[%d]", executable, pid), "err", err)
 	}
@@ -368,8 +316,8 @@ func parseQuery(message json.RawMessage) (query query, err error) {
 }
 
 // family identifies all of the processes related to a process.
-func family(pt process.ProcessTable, pid Pid) process.ProcessTable {
-	ft := process.ProcessTable{pid: pt[pid]}
+func family(pt process.Table, pid Pid) process.Table {
+	ft := process.Table{pid: pt[pid]}
 	for pid := pt[pid].Ppid; pid > 1; pid = pt[pid].Ppid { // ancestors
 		ft[pid] = pt[pid]
 	}
@@ -381,12 +329,12 @@ func family(pt process.ProcessTable, pid Pid) process.ProcessTable {
 }
 
 // longname formats the full Executable name and pid.
-func longname(pt process.ProcessTable, pid Pid) string {
+func longname(pt process.Table, pid Pid) string {
 	return fmt.Sprintf("%s[%d]", pt[pid].Executable, pid)
 }
 
 // shortname formats the base Executable name and pid.
-func shortname(pt process.ProcessTable, pid Pid) string {
+func shortname(pt process.Table, pid Pid) string {
 	return fmt.Sprintf("%s[%d]", filepath.Base(pt[pid].Executable), pid)
 }
 

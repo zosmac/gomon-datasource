@@ -19,6 +19,7 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 		data.FieldTypeFloat64,
 		data.FieldTypeFloat64,
 		data.FieldTypeFloat64,
+		data.FieldTypeFloat64,
 	)
 	nodes.SetFieldNames(
 		"id",
@@ -31,6 +32,7 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 		"arc__host",
 		"arc__process",
 		"arc__data",
+		"arc__socket",
 		"arc__kernel",
 	)
 	nodes.SetMeta(&data.FrameMeta{
@@ -91,6 +93,11 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 	}
 	nodes.Fields[10].Config = &data.FieldConfig{
 		Color:       magenta,
+		DisplayName: "Socket",
+		Path:        "socket",
+	}
+	nodes.Fields[11].Config = &data.FieldConfig{
+		Color:       cyan,
 		DisplayName: "Kernel",
 		Path:        "kernel",
 	}

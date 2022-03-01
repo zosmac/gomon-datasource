@@ -26,14 +26,14 @@ var (
 )
 
 // properties captures the properties of a process.
-func (pid Pid) properties() (id, Props) {
+func (pid Pid) properties() (id, Properties) {
 	buf, err := os.ReadFile(filepath.Join("/proc", pid.String(), "stat"))
 	if err != nil {
 		log.DefaultLogger.Error("Cannot read /proc/pid/stat file",
 			"pid", pid.String(), // to format as int rather than float
 			"err", err,
 		)
-		return id{Pid: pid}, Props{}
+		return id{Pid: pid}, Properties{}
 	}
 	fields := strings.Fields(string(buf))
 
@@ -48,7 +48,7 @@ func (pid Pid) properties() (id, Props) {
 			Name: fields[1][1 : len(fields[1])-1],
 			Pid:  pid,
 		},
-		Props{
+		Properties{
 			Ppid:        Pid(ppid),
 			Pgid:        pgid,
 			UID:         uid,

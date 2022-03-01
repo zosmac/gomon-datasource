@@ -133,11 +133,11 @@ type (
 		Connections []Connection `json:"connections" gomon:""`
 	}
 
-	// ProcessTable defines a process table as a map of pids to processes.
-	ProcessTable map[Pid]*Process
+	// Table defines a process table as a map of pids to processes.
+	Table map[Pid]*Process
 
-	// ProcessTree organizes the processes into a hierarchy.
-	ProcessTree map[Pid]ProcessTree
+	// Tree organizes the processes into a hierarchy.
+	Tree map[Pid]Tree
 )
 
 // lookup retrieves and caches name for id.
@@ -163,7 +163,7 @@ func (p *Process) ID() string {
 }
 
 // BuildTable builds a process table and captures current process state
-func BuildTable() ProcessTable {
+func BuildTable() Table {
 	seteuid()
 	defer setuid()
 
@@ -199,8 +199,8 @@ func BuildTable() ProcessTable {
 	return pt
 }
 
-func BuildTree(pt ProcessTable) ProcessTree {
-	t := ProcessTree{}
+func BuildTree(pt Table) Tree {
+	t := Tree{}
 
 	for pid, p := range pt {
 		var ancestors []Pid
@@ -213,17 +213,17 @@ func BuildTree(pt ProcessTable) ProcessTree {
 	return t
 }
 
-func addPid(t ProcessTree, ancestors []Pid) {
+func addPid(t Tree, ancestors []Pid) {
 	if len(ancestors) == 0 {
 		return
 	}
 	if _, ok := t[ancestors[0]]; !ok {
-		t[ancestors[0]] = ProcessTree{}
+		t[ancestors[0]] = Tree{}
 	}
 	addPid(t[ancestors[0]], ancestors[1:])
 }
 
-func FlatTree(t ProcessTree, indent int) []Pid {
+func FlatTree(t Tree, indent int) []Pid {
 	var flat []Pid
 
 	pids := make([]Pid, len(t))
@@ -248,7 +248,7 @@ func FlatTree(t ProcessTree, indent int) []Pid {
 	return flat
 }
 
-func depthTree(t ProcessTree) int {
+func depthTree(t Tree) int {
 	depth := 0
 	for _, tree := range t {
 		dt := depthTree(tree) + 1
@@ -259,7 +259,7 @@ func depthTree(t ProcessTree) int {
 	return depth
 }
 
-func FindTree(t ProcessTree, pid Pid) ProcessTree {
+func FindTree(t Tree, pid Pid) Tree {
 	if t, ok := t[pid]; ok {
 		return t
 	}

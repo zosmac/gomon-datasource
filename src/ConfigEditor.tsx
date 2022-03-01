@@ -7,9 +7,9 @@ import { defaultDataSourceOptions, MyDataSourceOptions, MySecureJsonData } from 
 
 const { FormField, SecretFormField } = LegacyForms;
 
-interface Props extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
+interface Properties extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
 
-export class ConfigEditor extends PureComponent<Props> {
+export class ConfigEditor extends PureComponent<Properties> {
   onHostChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     const jsonData = {
