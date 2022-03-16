@@ -6,14 +6,43 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"regexp"
 	"runtime"
 	"strconv"
-	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
+)
+
+const (
+	// query regular expression named capture groups.
+	groupType    = "type"
+	groupName    = "name"
+	groupProcess = "process"
+	groupPid     = "pid"
+)
+
+var (
+	// Hostname identifies the host.
+	Hostname, _ = os.Hostname()
+
+	// queryRegex used to read the pid from the query.
+	queryRegex = regexp.MustCompile(
+		`^(?:` +
+			`(?P<type>[A-Za-z]+):(?P<name>.+)|` +
+			`(?P<process>[^\[]*)\[(?P<pid>\d+)\]|` +
+			`)$`,
+	)
+
+	queryGroups = func() map[string]int {
+		g := map[string]int{}
+		for _, name := range queryRegex.SubexpNames() {
+			g[name] = queryRegex.SubexpIndex(name)
+		}
+		return g
+	}()
 )
 
 type (
@@ -37,6 +66,16 @@ type (
 			Published     int
 			Errors        int
 		}
+	}
+
+	// query from data source.
+	query struct {
+		process   string
+		pid       Pid
+		nodeType  string
+		name      string
+		Node      string `json:"node"`
+		Streaming bool   `json:"streaming"`
 	}
 )
 
@@ -115,7 +154,7 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 	dsi.Query.Requests += 1
 	resp = backend.NewQueryDataResponse()
 
-	link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"node":{${__value.raw}}}]`,
+	link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"node":"${__value.raw}"}]`,
 		req.PluginContext.DataSourceInstanceSettings.Name,
 	)
 
@@ -127,80 +166,61 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 			"query", query,
 		)
 
-		resp.Responses[query.RefID] = NodeGraph(link, query.JSON)
+		q, err := parseQuery(query.JSON)
+		if err != nil {
+			resp.Responses[query.RefID] = backend.DataResponse{Error: err}
+			continue
+		}
+
+		if q.pid != 0 {
+			resp.Responses[query.RefID] = NodeGraph(link, q)
+		} else {
+			resp.Responses[query.RefID] = Logs(link)
+		}
 	}
 
 	return resp, nil
 }
 
-// RunStream initiates data source's stream to channel.
-func (dsi *instance) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
-	dsi.Stream.Streams += 1
-	log.DefaultLogger.Info("RunStream called",
-		"datasource", dsi,
-		"request", req,
-	)
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.DefaultLogger.Info("Context done, finish streaming", "path", req.Path)
-			return nil
-		case <-time.After(time.Second * 10):
-			dsi.Stream.Messages += 1
-			log.DefaultLogger.Info("Stream message",
-				"streams", strconv.Itoa(dsi.Stream.Streams),
-				"messages", strconv.Itoa(dsi.Stream.Messages),
-				"request", req,
-			)
-
-			link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"node":{${__value.raw}}}]`,
-				req.PluginContext.DataSourceInstanceSettings.Name,
-			)
-
-			resp := NodeGraph(link, []byte(`{"streaming": true}`))
-			for _, frame := range resp.Frames {
-				if err := sender.SendFrame(frame, data.IncludeAll); err != nil {
-					log.DefaultLogger.Error("Error sending frame",
-						"frame", frame.Name,
-						"err", err,
-					)
-					dsi.Stream.Errors += 1
-					break
-				}
-			}
-		}
+// parseQuery extracts the query from the request JSON.
+func parseQuery(message json.RawMessage) (query, error) {
+	q := query{}
+	// Unmarshal the JSON into our queryModel.
+	if err := json.Unmarshal(message, &q); err != nil {
+		log.DefaultLogger.Error("Query unmarshaling failed",
+			"json", string(message),
+			"err", err,
+		)
+		return query{}, err
 	}
-}
 
-// SubscribeStream connects client to stream.
-func (dsi *instance) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
-	dsi.Stream.Subscriptions += 1
-	log.DefaultLogger.Info("SubscribeStream called",
-		"subscriptions", strconv.Itoa(dsi.Stream.Subscriptions),
-		"request", req,
+	log.DefaultLogger.Info("Data source query",
+		"query", q,
 	)
 
-	status := backend.SubscribeStreamStatusPermissionDenied
-	if req.Path == "stream" {
-		// Allow subscribing only on expected path.
-		status = backend.SubscribeStreamStatusOK
+	match := queryRegex.FindStringSubmatch(q.Node)
+	if len(match) == 0 || match[0] == "" {
+		return q, nil
 	}
-	return &backend.SubscribeStreamResponse{
-		Status: status,
-	}, nil
-}
 
-// PublishStream sends client message to the stream.
-func (dsi *instance) PublishStream(_ context.Context, req *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
-	dsi.Stream.Published += 1
-	log.DefaultLogger.Info("PublishStream called",
-		"published", strconv.Itoa(dsi.Stream.Published),
-		"request", req,
+	q.process = match[queryGroups[groupProcess]]
+	q.nodeType = match[queryGroups[groupType]]
+	q.name = match[queryGroups[groupName]]
+	pid, err := strconv.Atoi(match[queryGroups[groupPid]])
+	if err == nil {
+		q.pid = Pid(pid)
+	}
+
+	log.DefaultLogger.Info("query regex match",
+		"type", q.nodeType,
+		"name", q.name,
+		"process", q.process,
+		"pid", match[queryGroups[groupPid]],
 	)
 
-	// Do not allow publishing at all.
-	return &backend.PublishStreamResponse{
-		Status: backend.PublishStreamStatusPermissionDenied,
-	}, nil
+	if pid == 0 && q.nodeType == "" {
+		q.Node = ""
+	}
+
+	return q, nil
 }

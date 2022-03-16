@@ -34,10 +34,10 @@ var (
 	)
 
 	// rgxgroups maps names of capture groups to indices.
-	rgxgroups = func() map[captureGroup]int {
-		g := map[captureGroup]int{}
+	rgxgroups = func() map[string]int {
+		g := map[string]int{}
 		for _, name := range regex.SubexpNames() {
-			g[captureGroup(name)] = regex.SubexpIndex(name)
+			g[name] = regex.SubexpIndex(name)
 		}
 		return g
 	}()
@@ -73,18 +73,13 @@ var (
 
 const (
 	// lsof line regular expressions named capture groups.
-	groupCommand captureGroup = "command"
-	groupPid     captureGroup = "pid"
-	groupFd      captureGroup = "fd"
-	groupMode    captureGroup = "mode"
-	groupType    captureGroup = "type"
-	groupDevice  captureGroup = "device"
-	groupNode    captureGroup = "node"
-)
-
-type (
-	// captureGroup is the name of a reqular expression capture group.
-	captureGroup string
+	groupCommand = "command"
+	groupPid     = "pid"
+	groupFd      = "fd"
+	groupMode    = "mode"
+	groupType    = "type"
+	groupDevice  = "device"
+	groupNode    = "node"
 )
 
 func init() {

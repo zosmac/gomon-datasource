@@ -13,17 +13,10 @@ export function QueryEditor(props: Properties) {
 export function ExploreQueryEditor(props: Properties) {
   const { query } = props;
   const { node } = defaults(query, defaultQuery);
-  const { process, host, data } = node;
   return (
     <>
-      <span hidden={process === undefined}>
-        <b>Process ID:</b> {process}
-      </span>
-      <span hidden={host === undefined}>
-        <b>IP Address:</b> {host}
-      </span>
-      <span hidden={data === undefined}>
-        <b>Data:</b> {data}
+      <span hidden={node === ''}>
+        <b>Node:</b> {node}
       </span>
     </>
   );

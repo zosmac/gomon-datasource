@@ -1,8 +1,8 @@
 module github.com/zosmac/gomon-datasource
 
-go 1.17
+go 1.18
 
-require github.com/grafana/grafana-plugin-sdk-go v0.126.0
+require github.com/grafana/grafana-plugin-sdk-go v0.129.0
 
 require (
 	github.com/apache/arrow/go/arrow v0.0.0-20211112161151-bc219186db40 // indirect

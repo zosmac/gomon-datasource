@@ -3,16 +3,13 @@
 package plugin
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"net"
 	"net/url"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,11 +25,6 @@ var (
 	// hnMap caches resolver host name lookup.
 	hnMap  = map[string]string{}
 	hnLock sync.Mutex
-
-	// queryRegex used to read the pid from the query.
-	queryRegex = regexp.MustCompile(
-		`^(?P<executable>[^\[]*)\[(?P<pid>\d+)\]$`,
-	)
 
 	// host/proc specify the arc for the circle drawn around a node.
 	// Each arc has a specific color set in its field metadata to create a circle that identifies the node type.
@@ -51,21 +43,10 @@ var (
 type (
 	// Pid alias for Pid in process package.
 	Pid = process.Pid
-
-	// query from data source.
-	query struct {
-		Pid
-		Node struct {
-			Process string `json:"process"`
-			Host    string `json:"host"`
-			Data    string `json:"data"`
-		} `json:"node"`
-		Streaming bool `json:"streaming"`
-	}
 )
 
 // NodeGraph produces the process connections node graph.
-func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse) {
+func NodeGraph(link string, query query) (resp backend.DataResponse) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := make([]byte, 4096)
@@ -83,21 +64,17 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 		}
 	}()
 
-	query, err := parseQuery(message)
-	if err != nil {
-		resp.Error = err
-		return
-	}
+	log.DefaultLogger.Info("NodeGraph requested", "node", query.Node)
 
 	ft := process.Table{}
 	pt := process.BuildTable()
 	process.Connections(pt)
 
-	if query.Pid > 0 && pt[query.Pid] == nil {
-		query.Pid = 0 // reset to default
+	if query.pid > 0 && pt[query.pid] == nil {
+		query.pid = 0 // reset to default
 	}
-	if query.Pid > 0 { // build this process' "extended family"
-		ft = family(pt, query.Pid)
+	if query.pid > 0 { // build this process' "extended family"
+		ft = family(pt, query.pid)
 	} else { // only consider non-daemon and remote host connected processes
 		for pid, p := range pt {
 			if p.Ppid > 1 {
@@ -127,8 +104,6 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 		fs[i] = ft[pid]
 	}
 
-	timestamp := time.Now()
-
 	nm := map[string][]interface{}{}
 	em := map[string][]interface{}{}
 
@@ -137,18 +112,18 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 			if conn.Self.Pid == 0 || conn.Peer.Pid == 0 || // ignore kernel process
 				conn.Self.Pid == 1 || conn.Peer.Pid == 1 || // ignore launchd processes
 				conn.Self.Pid == conn.Peer.Pid || // ignore inter-process connections
-				query.Pid == 0 && conn.Peer.Pid > math.MaxInt32 { // ignore data connections for the "all process" query
+				query.pid == 0 && conn.Peer.Pid > math.MaxInt32 { // ignore data connections for the "all process" query
 				continue
 			}
 
 			self := shortname(pt, conn.Self.Pid)
 			nm[self] = append([]interface{}{
-				timestamp,
-				shortname(pt, conn.Self.Pid),
+				self,
+				self,
 				conn.Self.Pid.String(),
 				longname(pt, conn.Self.Pid),
 				longname(pt, pt[conn.Self.Pid].Ppid),
-				fmt.Sprintf(`"process": %q`, self),
+				self,
 			}, procArc...)
 
 			if conn.Peer.Pid < 0 { // peer is remote host or listener
@@ -161,25 +136,25 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 				}
 
 				nm[peer] = append([]interface{}{
-					timestamp,
+					peer,
 					conn.Type + ":" + port,
 					hostname(host),
 					host,
 					hostname(host),
-					fmt.Sprintf(`"host": %q`, host),
+					host,
 				}, arc...)
 
 				// flip the source and target to get Host shown to left in node graph
-				key := fmt.Sprintf("%s->%d", peer, conn.Self.Pid)
-				if e, ok := em[key]; ok {
+				id := fmt.Sprintf("%s->%d", peer, conn.Self.Pid)
+				if e, ok := em[id]; ok {
 					e[5].(map[string]struct{})[conn.Type+":"+conn.Peer.Name+"->"+conn.Self.Name] = struct{}{}
 				} else {
-					em[key] = []interface{}{
-						timestamp,
+					em[id] = []interface{}{
+						id,
 						peer,
 						self,
-						fmt.Sprintf(`"host": %q`, host),
-						fmt.Sprintf(`"process": %q`, self),
+						host,
+						self,
 						map[string]struct{}{peer + "->" + conn.Self.Name: {}},
 					}
 				}
@@ -192,36 +167,36 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 				}
 
 				nm[peer] = append([]interface{}{
-					timestamp,
+					peer,
 					conn.Type,
 					conn.Peer.Name,
 					peer,
 					self,
-					fmt.Sprintf(`"data": %q`, url.QueryEscape(peer)),
+					url.QueryEscape(peer),
 				}, arc...)
 
-				key := fmt.Sprintf("%d->%s", conn.Self.Pid, peer)
-				if e, ok := em[key]; ok {
+				id := fmt.Sprintf("%d->%s", conn.Self.Pid, peer)
+				if e, ok := em[id]; ok {
 					e[5].(map[string]struct{})[self+"->"+peer] = struct{}{}
 				} else {
-					em[key] = []interface{}{
-						timestamp,
+					em[id] = []interface{}{
+						id,
 						self,
 						peer,
-						fmt.Sprintf(`"process": %q`, self),
-						fmt.Sprintf(`"data": %q`, url.QueryEscape(peer)),
+						self,
+						url.QueryEscape(peer),
 						map[string]struct{}{self + "->" + peer: {}},
 					}
 				}
 			} else { // peer is process
 				peer := shortname(pt, conn.Peer.Pid)
 				nm[peer] = append([]interface{}{
-					timestamp,
-					shortname(pt, conn.Peer.Pid),
+					peer,
+					peer,
 					conn.Peer.Pid.String(),
 					longname(pt, conn.Peer.Pid),
 					longname(pt, pt[conn.Peer.Pid].Ppid),
-					fmt.Sprintf(`"process": %q`, peer),
+					peer,
 				}, procArc...)
 
 				var s2p, p2s string
@@ -233,12 +208,12 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 				}
 
 				// show bidirectional connection only once
-				key := fmt.Sprintf("%d->%d", conn.Self.Pid, conn.Peer.Pid)
-				yek := fmt.Sprintf("%d->%d", conn.Peer.Pid, conn.Self.Pid)
+				id := fmt.Sprintf("%d->%d", conn.Self.Pid, conn.Peer.Pid)
+				di := fmt.Sprintf("%d->%d", conn.Peer.Pid, conn.Self.Pid)
 
-				e, ok := em[key]
+				e, ok := em[id]
 				if !ok {
-					e, ok = em[yek]
+					e, ok = em[di]
 				}
 				if ok {
 					_, ok := e[5].(map[string]struct{})[s2p]
@@ -249,12 +224,12 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 						e[5].(map[string]struct{})[s2p] = struct{}{}
 					}
 				} else {
-					em[key] = []interface{}{
-						timestamp,
+					em[id] = []interface{}{
+						id,
 						self,
 						peer,
-						fmt.Sprintf(`"process": %q`, self),
-						fmt.Sprintf(`"process": %q`, peer),
+						self,
+						peer,
 						map[string]struct{}{s2p: {}},
 					}
 				}
@@ -262,55 +237,41 @@ func NodeGraph(link string, message json.RawMessage) (resp backend.DataResponse)
 		}
 	}
 
-	nodes, edges := dataframes(link)
-	nodes.Meta.Stats[0].Value = float64(len(nm))
-	edges.Meta.Stats[0].Value = float64(len(em))
-	resp.Frames = data.Frames{nodes, edges}
+	nodes, edges := nodeFrames(link, len(nm), len(em))
+	timestamp := time.Now()
 
-	for id, n := range nm {
-		nodes.AppendRow(append([]interface{}{id}, n...)...)
+	i = 0
+	rows := make([][]interface{}, len(nm))
+	for _, n := range nm {
+		rows[i] = n
+		i++
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i][0].(string) < rows[j][0].(string)
+	})
+	for i, row := range rows {
+		nodes.SetRow(i, append([]interface{}{timestamp}, row...)...)
 	}
 
-	for id, e := range em {
+	i = 0
+	rows = make([][]interface{}, len(em))
+	for _, e := range em {
 		var ss []string
 		for s := range e[5].(map[string]struct{}) {
 			ss = append(ss, s)
 		}
 		e[5] = strings.Join(ss, ", ")
-		edges.AppendRow(append([]interface{}{id}, e...)...)
+		rows[i] = e
+		i++
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i][0].(string) < rows[j][0].(string)
+	})
+	for i, row := range rows {
+		edges.SetRow(i, append([]interface{}{timestamp}, row...)...)
 	}
 
-	return
-}
-
-// parseQuery extracts the query from the request JSON.
-func parseQuery(message json.RawMessage) (query query, err error) {
-	// Unmarshal the JSON into our queryModel.
-	if err = json.Unmarshal(message, &query); err != nil {
-		log.DefaultLogger.Error("Query unmarshaling failed",
-			"json", string(message),
-			"err", err,
-		)
-		return
-	}
-
-	log.DefaultLogger.Info("Node Graph query properties",
-		"pid", query.Pid,
-		"process", query.Node.Process,
-		"host", query.Node.Host,
-		"data", query.Node.Data,
-		"streaming", query.Streaming,
-	)
-
-	if query.Node.Process != "" {
-		match := queryRegex.FindStringSubmatch(query.Node.Process)
-		executable := match[1]
-		pid, err := strconv.Atoi(match[2])
-		if err == nil {
-			query.Pid = Pid(pid)
-		}
-		log.DefaultLogger.Info(fmt.Sprintf("process: %s[%d]", executable, pid), "err", err)
-	}
+	resp.Frames = data.Frames{nodes, edges}
 
 	return
 }

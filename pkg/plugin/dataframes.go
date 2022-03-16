@@ -6,10 +6,10 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
-func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
-	nodes = data.NewFrameOfFieldTypes("nodes", 0,
-		data.FieldTypeString,
+func nodeFrames(link string, nodeCount, edgeCount int) (nodes *data.Frame, edges *data.Frame) {
+	nodes = data.NewFrameOfFieldTypes("nodes", nodeCount,
 		data.FieldTypeTime,
+		data.FieldTypeString,
 		data.FieldTypeString,
 		data.FieldTypeString,
 		data.FieldTypeString,
@@ -22,8 +22,8 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 		data.FieldTypeFloat64,
 	)
 	nodes.SetFieldNames(
-		"id",
 		"time",
+		"id",
 		"mainStat",
 		"secondaryStat",
 		"detail__name",
@@ -42,15 +42,17 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 			FieldConfig: data.FieldConfig{
 				DisplayName: "Node Count",
 			},
+			Value: float64(nodeCount),
 		}},
 	})
+
 	nodes.Fields[0].Config = &data.FieldConfig{
-		DisplayName: "ID",
-		Path:        "id",
-	}
-	nodes.Fields[1].Config = &data.FieldConfig{
 		DisplayName: "Time",
 		Path:        "time",
+	}
+	nodes.Fields[1].Config = &data.FieldConfig{
+		DisplayName: "ID",
+		Path:        "id",
 	}
 	nodes.Fields[2].Config = &data.FieldConfig{
 		DisplayName: " ",
@@ -102,9 +104,9 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 		Path:        "kernel",
 	}
 
-	edges = data.NewFrameOfFieldTypes("edges", 0,
-		data.FieldTypeString,
+	edges = data.NewFrameOfFieldTypes("edges", edgeCount,
 		data.FieldTypeTime,
+		data.FieldTypeString,
 		data.FieldTypeString,
 		data.FieldTypeString,
 		data.FieldTypeString,
@@ -112,8 +114,8 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 		data.FieldTypeString,
 	)
 	edges.SetFieldNames(
-		"id",
 		"time",
+		"id",
 		"source",
 		"target",
 		"mainStat",
@@ -127,15 +129,17 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 			FieldConfig: data.FieldConfig{
 				DisplayName: "Edge Count",
 			},
+			Value: float64(edgeCount),
 		}},
 	})
+
 	edges.Fields[0].Config = &data.FieldConfig{
-		DisplayName: "ID",
-		Path:        "id",
-	}
-	edges.Fields[1].Config = &data.FieldConfig{
 		DisplayName: "Time",
 		Path:        "time",
+	}
+	edges.Fields[1].Config = &data.FieldConfig{
+		DisplayName: "ID",
+		Path:        "id",
 	}
 	edges.Fields[2].Config = &data.FieldConfig{
 		DisplayName: "Source_ID",
@@ -164,6 +168,105 @@ func dataframes(link string) (nodes *data.Frame, edges *data.Frame) {
 	edges.Fields[6].Config = &data.FieldConfig{
 		DisplayName: "Relations",
 		Path:        "relations",
+	}
+
+	return
+}
+
+func logFrames(link string, messages [][]interface{}) (logs *data.Frame) {
+	logs = data.NewFrameOfFieldTypes("logs", len(messages),
+		data.FieldTypeTime,
+		data.FieldTypeString,
+		data.FieldTypeString,
+		data.FieldTypeString,
+		data.FieldTypeString,
+	)
+	logs.SetFieldNames(
+		"time",
+		"message",
+		"level",
+		"process",
+		"sender",
+	)
+
+	// logs = data.NewFrame("logs",
+	// 	&data.Field{
+	// 		Name: "time",
+	// 		Config: &data.FieldConfig{
+	// 			DisplayName: "Time",
+	// 			Path:        "time",
+	// 		},
+	// 	},
+	// 	&data.Field{
+	// 		Name: "message",
+	// 		Config: &data.FieldConfig{
+	// 			DisplayName: "Message",
+	// 			Path:        "message",
+	// 		},
+	// 	},
+	// 	&data.Field{
+	// 		Name: "level",
+	// 		Config: &data.FieldConfig{
+	// 			DisplayName: "Level",
+	// 			Path:        "level",
+	// 		},
+	// 	},
+	// 	&data.Field{
+	// 		Name: "process",
+	// 		Config: &data.FieldConfig{
+	// 			DisplayName: "Process",
+	// 			Path:        "process",
+	// 			Links: []data.DataLink{{
+	// 				Title: "${__value.raw}",
+	// 				URL:   link,
+	// 			}},
+	// 		},
+	// 	},
+	// 	&data.Field{
+	// 		Name: "sender",
+	// 		Config: &data.FieldConfig{
+	// 			DisplayName: "Sender",
+	// 			Path:        "sender",
+	// 		},
+	// 	},
+	// )
+	logs.SetMeta(&data.FrameMeta{
+		Path:                   "log",
+		PreferredVisualization: data.VisType("logs"),
+		Stats: []data.QueryStat{{
+			FieldConfig: data.FieldConfig{
+				DisplayName: "Log Count",
+			},
+			Value: float64(len(messages)),
+		}},
+	})
+	logs.Fields[0].Config = &data.FieldConfig{
+		DisplayName: "Time",
+		Path:        "time",
+	}
+	logs.Fields[1].Config = &data.FieldConfig{
+		DisplayName: "Message",
+		Path:        "message",
+	}
+	logs.Fields[2].Config = &data.FieldConfig{
+		DisplayName: "Level",
+		Path:        "level",
+	}
+	logs.Fields[3].Config = &data.FieldConfig{
+		DisplayName: "Process",
+		Path:        "process",
+		Links: []data.DataLink{{
+			Title: "${__value.raw}",
+			URL:   link,
+		}},
+	}
+	logs.Fields[4].Config = &data.FieldConfig{
+		DisplayName: "Sender",
+		Path:        "sender",
+	}
+
+	for i, m := range messages {
+		logs.SetRow(i, m...)
 	}
 
 	return

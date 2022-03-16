@@ -3,6 +3,7 @@
   "type": "datasource",
   "name": "gomon-datasource",
   "id": "zosmac-gomon-datasource",
+  "logs": true,
   "metrics": true,
   "backend": true,
   "executable": "gomon-datasource",
