@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// query regular expression named capture groups.
+	// query regular expression capture group names.
 	groupType    = "type"
 	groupName    = "name"
 	groupProcess = "process"

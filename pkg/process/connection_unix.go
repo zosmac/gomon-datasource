@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	// regex for parsing lsof output lines from lsof command.
-	regex = regexp.MustCompile(
+	// lsofRegex for parsing lsof output lines from lsof command.
+	lsofRegex = regexp.MustCompile(
 		`^(?P<command>[^ ]+)[ ]+` +
 			`(?P<pid>\d+)[ ]+` +
 			`(?:\d+)[ ]+` + // USER
@@ -33,11 +33,11 @@ var (
 			`(?P<node>(?:[^ ]+|))`,
 	)
 
-	// rgxgroups maps names of capture groups to indices.
-	rgxgroups = func() map[string]int {
+	// lsofGroups maps capture group names to indices.
+	lsofGroups = func() map[string]int {
 		g := map[string]int{}
-		for _, name := range regex.SubexpNames() {
-			g[name] = regex.SubexpIndex(name)
+		for _, name := range lsofRegex.SubexpNames() {
+			g[name] = lsofRegex.SubexpIndex(name)
 		}
 		return g
 	}()
@@ -45,7 +45,7 @@ var (
 	// zoneregex determines if a link local address embeds a zone index.
 	zoneregex = regexp.MustCompile(`^((fe|FE)80):(\d{1,2})(::.*)$`)
 
-	// Zones maps local ip addresses to their network zones.
+	// zones maps local ip addresses to their network zones.
 	zones = func() map[string]string {
 		zm := map[string]string{}
 		if nis, err := net.Interfaces(); err == nil {
@@ -72,7 +72,7 @@ var (
 )
 
 const (
-	// lsof line regular expressions named capture groups.
+	// lsof output lines regular expression capture group names.
 	groupCommand = "command"
 	groupPid     = "pid"
 	groupFd      = "fd"
@@ -154,18 +154,18 @@ func parseLsof(stdout io.ReadCloser) {
 			epLock.Unlock()
 			continue
 		}
-		match := regex.FindStringSubmatch(text[:nameIndex])
+		match := lsofRegex.FindStringSubmatch(text[:nameIndex])
 		if len(match) == 0 || match[0] == "" {
 			continue
 		}
 
-		command := match[rgxgroups[groupCommand]]
-		pid, _ := strconv.Atoi(match[rgxgroups[groupPid]])
-		fd, _ := strconv.Atoi(match[rgxgroups[groupFd]])
-		mode := match[rgxgroups[groupMode]][0]
-		fdType := match[rgxgroups[groupType]]
-		device := match[rgxgroups[groupDevice]]
-		node := match[rgxgroups[groupNode]]
+		command := match[lsofGroups[groupCommand]]
+		pid, _ := strconv.Atoi(match[lsofGroups[groupPid]])
+		fd, _ := strconv.Atoi(match[lsofGroups[groupFd]])
+		mode := match[lsofGroups[groupMode]][0]
+		fdType := match[lsofGroups[groupType]]
+		device := match[lsofGroups[groupDevice]]
+		node := match[lsofGroups[groupNode]]
 		peer := text[nameIndex:]
 
 		var self string

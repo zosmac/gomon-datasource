@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	// log record regular expressions named capture groups.
+	// log record regular expressions capture group names.
 	groupTimestamp = "timestamp"
 	groupLevel     = "level"
 	groupHost      = "host"
@@ -109,7 +109,9 @@ func logCommand() {
 
 // syslogCommand starts the syslog command to capture syslog entries
 func syslogCommand() {
-	sc, err := startCommand(append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"), syslogLevels["info"]))
+	sc, err := startCommand(append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
+		syslogLevels["info"]),
+	)
 	if err != nil {
 		log.DefaultLogger.Error("syslog command failed", "err", err)
 		return
