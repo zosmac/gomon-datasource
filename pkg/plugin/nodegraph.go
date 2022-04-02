@@ -16,7 +16,6 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
 
 	"github.com/zosmac/gomon-datasource/pkg/process"
 )
@@ -64,7 +63,7 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 		}
 	}()
 
-	log.DefaultLogger.Info("NodeGraph requested", "node", query.Node)
+	log.DefaultLogger.Info("NodeGraph requested", "node", query.Query)
 
 	ft := process.Table{}
 	pt := process.BuildTable()
@@ -90,40 +89,27 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 		}
 	}
 
-	pids := make([]Pid, len(ft))
-	i := 0
-	for pid := range ft {
-		pids[i] = pid
-		i++
-	}
-	sort.Slice(pids, func(i, j int) bool {
-		return pids[i] < pids[j]
-	})
-	fs := make([]*process.Process, len(ft))
-	for i, pid := range pids {
-		fs[i] = ft[pid]
-	}
-
 	nm := map[string][]interface{}{}
 	em := map[string][]interface{}{}
+	timestamp := time.Now()
 
-	for _, p := range fs {
+	for _, p := range ft {
 		for _, conn := range p.Connections {
 			if conn.Self.Pid == 0 || conn.Peer.Pid == 0 || // ignore kernel process
 				conn.Self.Pid == 1 || conn.Peer.Pid == 1 || // ignore launchd processes
 				conn.Self.Pid == conn.Peer.Pid || // ignore inter-process connections
-				query.pid == 0 && conn.Peer.Pid > math.MaxInt32 { // ignore data connections for the "all process" query
+				query.pid == 0 && conn.Peer.Pid >= math.MaxInt32 { // ignore data connections for the "all process" query
 				continue
 			}
 
 			self := shortname(pt, conn.Self.Pid)
 			nm[self] = append([]interface{}{
-				self,
-				self,
+				timestamp,
+				int64(conn.Self.Pid),
+				filepath.Base(pt[conn.Self.Pid].Executable),
 				conn.Self.Pid.String(),
-				longname(pt, conn.Self.Pid),
-				longname(pt, pt[conn.Self.Pid].Ppid),
-				self,
+				fullname(pt, conn.Self.Pid),
+				fullname(pt, pt[conn.Self.Pid].Ppid),
 			}, procArc...)
 
 			if conn.Peer.Pid < 0 { // peer is remote host or listener
@@ -136,29 +122,30 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 				}
 
 				nm[peer] = append([]interface{}{
-					peer,
+					timestamp,
+					int64(conn.Peer.Pid),
 					conn.Type + ":" + port,
 					hostname(host),
 					host,
 					hostname(host),
-					host,
 				}, arc...)
 
 				// flip the source and target to get Host shown to left in node graph
-				id := fmt.Sprintf("%s->%d", peer, conn.Self.Pid)
+				id := fmt.Sprintf("%d->%d", conn.Peer.Pid, conn.Self.Pid)
 				if e, ok := em[id]; ok {
-					e[5].(map[string]struct{})[conn.Type+":"+conn.Peer.Name+"->"+conn.Self.Name] = struct{}{}
+					e[6].(map[string]struct{})[conn.Type+":"+conn.Peer.Name+"->"+conn.Self.Name] = struct{}{}
 				} else {
 					em[id] = []interface{}{
+						timestamp,
 						id,
-						peer,
-						self,
+						int64(conn.Peer.Pid),
+						int64(conn.Self.Pid),
 						host,
 						self,
 						map[string]struct{}{peer + "->" + conn.Self.Name: {}},
 					}
 				}
-			} else if conn.Peer.Pid > math.MaxInt32 { // peer is data
+			} else if conn.Peer.Pid >= math.MaxInt32 { // peer is data
 				peer := conn.Type + ":" + conn.Peer.Name
 
 				arc := dataArc
@@ -167,22 +154,23 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 				}
 
 				nm[peer] = append([]interface{}{
-					peer,
+					timestamp,
+					int64(conn.Peer.Pid),
 					conn.Type,
 					conn.Peer.Name,
 					peer,
 					self,
-					url.QueryEscape(peer),
 				}, arc...)
 
-				id := fmt.Sprintf("%d->%s", conn.Self.Pid, peer)
+				id := fmt.Sprintf("%d->%d", conn.Self.Pid, conn.Peer.Pid)
 				if e, ok := em[id]; ok {
-					e[5].(map[string]struct{})[self+"->"+peer] = struct{}{}
+					e[6].(map[string]struct{})[self+"->"+peer] = struct{}{}
 				} else {
 					em[id] = []interface{}{
+						timestamp,
 						id,
-						self,
-						peer,
+						int64(conn.Self.Pid),
+						int64(conn.Peer.Pid),
 						self,
 						url.QueryEscape(peer),
 						map[string]struct{}{self + "->" + peer: {}},
@@ -191,12 +179,12 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 			} else { // peer is process
 				peer := shortname(pt, conn.Peer.Pid)
 				nm[peer] = append([]interface{}{
-					peer,
-					peer,
+					timestamp,
+					int64(conn.Peer.Pid),
+					filepath.Base(pt[conn.Peer.Pid].Executable),
 					conn.Peer.Pid.String(),
-					longname(pt, conn.Peer.Pid),
-					longname(pt, pt[conn.Peer.Pid].Ppid),
-					peer,
+					fullname(pt, conn.Peer.Pid),
+					fullname(pt, pt[conn.Peer.Pid].Ppid),
 				}, procArc...)
 
 				var s2p, p2s string
@@ -213,65 +201,76 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 
 				e, ok := em[id]
 				if !ok {
-					e, ok = em[di]
+					if e, ok = em[di]; ok && conn.Type == "parent" {
+						em[id] = []interface{}{
+							timestamp,
+							id,
+							int64(conn.Self.Pid),
+							int64(conn.Peer.Pid),
+							self,
+							peer,
+							e[6],
+						}
+						delete(em, di)
+					}
 				}
 				if ok {
-					_, ok := e[5].(map[string]struct{})[s2p]
-					if !ok {
-						_, ok = e[5].(map[string]struct{})[p2s]
-					}
-					if !ok {
-						e[5].(map[string]struct{})[s2p] = struct{}{}
+					if conn.Type != "parent" {
+						_, ok := e[6].(map[string]struct{})[s2p]
+						if !ok {
+							_, ok = e[6].(map[string]struct{})[p2s]
+						}
+						if !ok {
+							e[6].(map[string]struct{})[s2p] = struct{}{}
+						}
 					}
 				} else {
 					em[id] = []interface{}{
+						timestamp,
 						id,
+						int64(conn.Self.Pid),
+						int64(conn.Peer.Pid),
 						self,
 						peer,
-						self,
-						peer,
-						map[string]struct{}{s2p: {}},
+						map[string]struct{}{},
+					}
+					if conn.Type != "parent" {
+						em[id][6].(map[string]struct{})[s2p] = struct{}{}
 					}
 				}
 			}
 		}
 	}
 
-	nodes, edges := nodeFrames(link, len(nm), len(em))
-	timestamp := time.Now()
-
-	i = 0
-	rows := make([][]interface{}, len(nm))
+	ns := make([][]interface{}, len(nm))
+	i := 0
 	for _, n := range nm {
-		rows[i] = n
+		ns[i] = n
 		i++
 	}
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i][0].(string) < rows[j][0].(string)
-	})
-	for i, row := range rows {
-		nodes.SetRow(i, append([]interface{}{timestamp}, row...)...)
-	}
 
+	sort.Slice(ns, func(i, j int) bool {
+		return ns[i][1].(int64) < ns[j][1].(int64)
+	})
+
+	es := make([][]interface{}, len(em))
 	i = 0
-	rows = make([][]interface{}, len(em))
 	for _, e := range em {
 		var ss []string
-		for s := range e[5].(map[string]struct{}) {
+		for s := range e[6].(map[string]struct{}) {
 			ss = append(ss, s)
 		}
-		e[5] = strings.Join(ss, ", ")
-		rows[i] = e
+		e[6] = strings.Join(ss, ", ")
+		es[i] = e
 		i++
 	}
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i][0].(string) < rows[j][0].(string)
-	})
-	for i, row := range rows {
-		edges.SetRow(i, append([]interface{}{timestamp}, row...)...)
-	}
 
-	resp.Frames = data.Frames{nodes, edges}
+	sort.Slice(es, func(i, j int) bool {
+		return es[i][2].(int64) < es[j][2].(int64) ||
+			es[i][2].(int64) == es[j][2].(int64) && es[i][3].(int64) < es[j][3].(int64)
+	})
+
+	resp.Frames = nodeFrames(link, ns, es)
 
 	return
 }
@@ -289,8 +288,8 @@ func family(pt process.Table, pid Pid) process.Table {
 	return ft
 }
 
-// longname formats the full Executable name and pid.
-func longname(pt process.Table, pid Pid) string {
+// fullname formats the full Executable name and pid.
+func fullname(pt process.Table, pid Pid) string {
 	return fmt.Sprintf("%s[%d]", pt[pid].Executable, pid)
 }
 

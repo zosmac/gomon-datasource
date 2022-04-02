@@ -11,12 +11,11 @@ export function QueryEditor(props: Properties) {
 }
 
 export function ExploreQueryEditor(props: Properties) {
-  const { query } = props;
-  const { node } = defaults(query, defaultQuery);
+  const { query } = defaults(props.query, defaultQuery);
   return (
     <>
-      <span hidden={node === ''}>
-        <b>Node:</b> {node}
+      <span hidden={query === ''}>
+        <b>Query:</b> {query}
       </span>
     </>
   );

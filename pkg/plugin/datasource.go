@@ -18,10 +18,8 @@ import (
 
 const (
 	// query regular expression capture group names.
-	groupType    = "type"
-	groupName    = "name"
-	groupProcess = "process"
-	groupPid     = "pid"
+	groupLogs = "logs"
+	groupPid  = "pid"
 )
 
 var (
@@ -31,8 +29,8 @@ var (
 	// queryRegex used to read the pid from the query.
 	queryRegex = regexp.MustCompile(
 		`^(?:` +
-			`(?P<type>[A-Za-z]+):(?P<name>.+)|` +
-			`(?P<process>[^\[]*)\[(?P<pid>\d+)\]|` +
+			`(?P<logs>logs)|` +
+			`(?P<pid>-?\d+)|` +
 			`)$`,
 	)
 
@@ -74,7 +72,8 @@ type (
 		pid       Pid
 		nodeType  string
 		name      string
-		Node      string `json:"node"`
+		logs      bool
+		Query     string `json:"query"`
 		Streaming bool   `json:"streaming"`
 	}
 )
@@ -154,7 +153,7 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 	dsi.Query.Requests += 1
 	resp = backend.NewQueryDataResponse()
 
-	link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"node":"${__value.raw}"}]`,
+	link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"query":"${__value.raw}"}]`,
 		req.PluginContext.DataSourceInstanceSettings.Name,
 	)
 
@@ -172,10 +171,10 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 			continue
 		}
 
-		if q.pid != 0 {
-			resp.Responses[query.RefID] = NodeGraph(link, q)
-		} else {
+		if q.Query == "logs" {
 			resp.Responses[query.RefID] = Logs(link)
+		} else {
+			resp.Responses[query.RefID] = NodeGraph(link, q)
 		}
 	}
 
@@ -183,44 +182,33 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 }
 
 // parseQuery extracts the query from the request JSON.
-func parseQuery(message json.RawMessage) (query, error) {
-	q := query{}
+func parseQuery(message json.RawMessage) (query query, err error) {
 	// Unmarshal the JSON into our queryModel.
-	if err := json.Unmarshal(message, &q); err != nil {
+	if err = json.Unmarshal(message, &query); err != nil {
 		log.DefaultLogger.Error("Query unmarshaling failed",
 			"json", string(message),
 			"err", err,
 		)
-		return query{}, err
+		return
 	}
 
 	log.DefaultLogger.Info("Data source query",
-		"query", q,
+		"query", query,
 	)
 
-	match := queryRegex.FindStringSubmatch(q.Node)
+	match := queryRegex.FindStringSubmatch(query.Query)
 	if len(match) == 0 || match[0] == "" {
-		return q, nil
+		return
 	}
 
-	q.process = match[queryGroups[groupProcess]]
-	q.nodeType = match[queryGroups[groupType]]
-	q.name = match[queryGroups[groupName]]
-	pid, err := strconv.Atoi(match[queryGroups[groupPid]])
-	if err == nil {
-		q.pid = Pid(pid)
-	}
+	query.logs = match[queryGroups[groupLogs]] != ""
+	pid, _ := strconv.Atoi(match[queryGroups[groupPid]])
+	query.pid = Pid(pid)
 
 	log.DefaultLogger.Info("query regex match",
-		"type", q.nodeType,
-		"name", q.name,
-		"process", q.process,
+		"logs", query.logs,
 		"pid", match[queryGroups[groupPid]],
 	)
 
-	if pid == 0 && q.nodeType == "" {
-		q.Node = ""
-	}
-
-	return q, nil
+	return query, nil
 }
