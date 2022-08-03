@@ -26,14 +26,14 @@ var (
 )
 
 // properties captures the properties of a process.
-func (pid Pid) properties() (id, Properties) {
+func (pid Pid) properties() (Id, Properties) {
 	buf, err := os.ReadFile(filepath.Join("/proc", pid.String(), "stat"))
 	if err != nil {
 		log.DefaultLogger.Error("Cannot read /proc/pid/stat file",
 			"pid", pid.String(), // to format as int rather than float
 			"err", err,
 		)
-		return id{Pid: pid}, Properties{}
+		return Id{Pid: pid}, Properties{}
 	}
 	fields := strings.Fields(string(buf))
 
@@ -44,7 +44,7 @@ func (pid Pid) properties() (id, Properties) {
 	uid, _ := strconv.Atoi(m["Uid"])
 	gid, _ := strconv.Atoi(m["Gid"])
 
-	return id{
+	return Id{
 			Name: fields[1][1 : len(fields[1])-1],
 			Pid:  pid,
 		},
@@ -71,7 +71,7 @@ func (pid Pid) commandLine() CommandLine {
 
 	cl.Executable, _ = os.Readlink(filepath.Join("/proc", pid.String(), "exe"))
 
-	if arg, err := os.ReadFile(filepath.Join("/proc", pid.String(), "cmdline")); err == nil {
+	if arg, err := os.ReadFile(filepath.Join("/proc", pid.String(), "cmdline")); err == nil && len(arg) > 2 {
 		cl.Args = strings.Split(string(arg[:len(arg)-2]), "\000")
 		cl.Args = cl.Args[1:]
 	}
@@ -99,7 +99,7 @@ func getPids() ([]Pid, error) {
 		return nil, fmt.Errorf("/proc read error %w", err)
 	}
 
-	pids := make([]Pid, 0, len(ns))
+	pids := make([]Pid, len(ns))
 	i := 0
 	for _, n := range ns {
 		if pid, err := strconv.Atoi(n); err == nil {
@@ -108,7 +108,7 @@ func getPids() ([]Pid, error) {
 		}
 	}
 
-	return pids, nil
+	return pids[:i], nil
 }
 
 // measures reads a /proc filesystem file and produces a map of name:value pairs.

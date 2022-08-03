@@ -24,10 +24,10 @@ func Connections(pt Table) {
 
 	epm := map[[3]string]Pid{} // is distinguishing dup'd and inherited descriptors an issue?
 
-	// build a map for identifying intra-host peer Endpoints
+	// build a map for identifying intra-host peer endpoints
 	for _, p := range pt {
 		for _, conn := range p.Connections {
-			if conn.Type == "unix" && conn.Self.Name != "" && conn.Peer.Name[0:2] != "0x" { // named socket
+			if conn.Type == "unix" && conn.Self.Name != "" && conn.Peer.Name[0] == '/' { // named socket
 				epm[[3]string{conn.Type, conn.Self.Name, ""}] = conn.Self.Pid
 			} else {
 				epm[[3]string{conn.Type, conn.Self.Name, conn.Peer.Name}] = conn.Self.Pid
@@ -65,18 +65,19 @@ func Connections(pt Table) {
 			}
 		}
 		if p.Ppid > 0 {
-			p.Connections = append(p.Connections,
-				Connection{
+			p.Connections = append([]Connection{
+				{
 					Type: "parent",
 					Self: Endpoint{
-						Name: pt[p.Ppid].Executable,
+						Name: pt[p.Ppid].Id.Name,
 						Pid:  p.Ppid,
 					},
 					Peer: Endpoint{
-						Name: p.Executable,
+						Name: p.Id.Name,
 						Pid:  p.Pid,
 					},
-				},
+				}},
+				p.Connections...,
 			)
 		}
 	}

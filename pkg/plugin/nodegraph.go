@@ -7,10 +7,9 @@ import (
 	"math"
 	"net"
 	"net/url"
-	"path/filepath"
 	"runtime"
 	"sort"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 
@@ -89,7 +88,7 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 		}
 	}
 
-	nm := map[string][]interface{}{}
+	nm := map[Pid][]interface{}{}
 	em := map[string][]interface{}{}
 	timestamp := time.Now()
 
@@ -102,26 +101,25 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 				continue
 			}
 
-			self := shortname(pt, conn.Self.Pid)
-			nm[self] = append([]interface{}{
+			nm[conn.Self.Pid] = append([]interface{}{
 				timestamp,
 				int64(conn.Self.Pid),
-				filepath.Base(pt[conn.Self.Pid].Executable),
+				pt[conn.Self.Pid].Id.Name,
 				conn.Self.Pid.String(),
-				fullname(pt, conn.Self.Pid),
-				fullname(pt, pt[conn.Self.Pid].Ppid),
+				longname(pt, conn.Self.Pid),
+				longname(pt, pt[conn.Self.Pid].Ppid),
 			}, procArc...)
 
 			if conn.Peer.Pid < 0 { // peer is remote host or listener
 				host, port, _ := net.SplitHostPort(conn.Peer.Name)
-				peer := conn.Type + ":" + conn.Peer.Name
 
 				arc := hostArc
-				if conn.Self.Name[0:2] == "0x" { // listen socket
+				// name for listen port is device inode: on linux decimal and on darwin hexadecimal
+				if _, err := strconv.Atoi(conn.Self.Name); err == nil || conn.Self.Name[0:2] == "0x" { // listen socket
 					arc = sockArc
 				}
 
-				nm[peer] = append([]interface{}{
+				nm[conn.Peer.Pid] = append([]interface{}{
 					timestamp,
 					int64(conn.Peer.Pid),
 					conn.Type + ":" + port,
@@ -131,19 +129,19 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 				}, arc...)
 
 				// flip the source and target to get Host shown to left in node graph
-				id := fmt.Sprintf("%d->%d", conn.Peer.Pid, conn.Self.Pid)
-				if e, ok := em[id]; ok {
-					e[6].(map[string]struct{})[conn.Type+":"+conn.Peer.Name+"->"+conn.Self.Name] = struct{}{}
-				} else {
-					em[id] = []interface{}{
-						timestamp,
-						id,
-						int64(conn.Peer.Pid),
-						int64(conn.Self.Pid),
-						host,
-						self,
-						map[string]struct{}{peer + "->" + conn.Self.Name: {}},
-					}
+				id := fmt.Sprintf("%d -> %d", conn.Peer.Pid, conn.Self.Pid)
+				em[id] = []interface{}{
+					timestamp,
+					id,
+					int64(conn.Peer.Pid),
+					int64(conn.Self.Pid),
+					host,
+					shortname(pt, conn.Self.Pid),
+					fmt.Sprintf("%s:%s ‑> %s", // non-breaking space/hyphen
+						conn.Type,
+						conn.Peer.Name,
+						conn.Self.Name,
+					),
 				}
 			} else if conn.Peer.Pid >= math.MaxInt32 { // peer is data
 				peer := conn.Type + ":" + conn.Peer.Name
@@ -153,89 +151,75 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 					arc = kernArc
 				}
 
-				nm[peer] = append([]interface{}{
+				nm[conn.Peer.Pid] = append([]interface{}{
 					timestamp,
 					int64(conn.Peer.Pid),
 					conn.Type,
 					conn.Peer.Name,
 					peer,
-					self,
+					shortname(pt, conn.Self.Pid),
 				}, arc...)
 
-				id := fmt.Sprintf("%d->%d", conn.Self.Pid, conn.Peer.Pid)
-				if e, ok := em[id]; ok {
-					e[6].(map[string]struct{})[self+"->"+peer] = struct{}{}
-				} else {
+				// show edge for data connections only once
+				id := fmt.Sprintf("%d -> %d", conn.Self.Pid, conn.Peer.Pid)
+				if _, ok := em[id]; !ok {
 					em[id] = []interface{}{
 						timestamp,
 						id,
 						int64(conn.Self.Pid),
 						int64(conn.Peer.Pid),
-						self,
+						shortname(pt, conn.Self.Pid),
 						url.QueryEscape(peer),
-						map[string]struct{}{self + "->" + peer: {}},
+						fmt.Sprintf("%s:%s ‑> %s", // non-breaking space/hyphen
+							conn.Type,
+							conn.Self.Name,
+							conn.Peer.Name,
+						),
 					}
 				}
 			} else { // peer is process
 				peer := shortname(pt, conn.Peer.Pid)
-				nm[peer] = append([]interface{}{
+				nm[conn.Peer.Pid] = append([]interface{}{
 					timestamp,
 					int64(conn.Peer.Pid),
-					filepath.Base(pt[conn.Peer.Pid].Executable),
+					pt[conn.Self.Pid].Id.Name,
 					conn.Peer.Pid.String(),
-					fullname(pt, conn.Peer.Pid),
-					fullname(pt, pt[conn.Peer.Pid].Ppid),
+					longname(pt, conn.Peer.Pid),
+					longname(pt, pt[conn.Peer.Pid].Ppid),
 				}, procArc...)
 
-				var s2p, p2s string
-				switch conn.Type {
-				case "parent":
-				default:
-					s2p = conn.Type + ":" + conn.Self.Name + "->" + conn.Peer.Name
-					p2s = conn.Type + ":" + conn.Peer.Name + "->" + conn.Self.Name
-				}
+				// show edge for inter-process connections only once
+				id := fmt.Sprintf("%d -> %d", conn.Self.Pid, conn.Peer.Pid)
+				di := fmt.Sprintf("%d -> %d", conn.Peer.Pid, conn.Self.Pid)
 
-				// show bidirectional connection only once
-				id := fmt.Sprintf("%d->%d", conn.Self.Pid, conn.Peer.Pid)
-				di := fmt.Sprintf("%d->%d", conn.Peer.Pid, conn.Self.Pid)
-
-				e, ok := em[id]
-				if !ok {
-					if e, ok = em[di]; ok && conn.Type == "parent" {
-						em[id] = []interface{}{
-							timestamp,
-							id,
-							int64(conn.Self.Pid),
-							int64(conn.Peer.Pid),
-							self,
-							peer,
-							e[6],
-						}
-						delete(em, di)
-					}
-				}
+				_, ok := em[id]
 				if ok {
-					if conn.Type != "parent" {
-						_, ok := e[6].(map[string]struct{})[s2p]
-						if !ok {
-							_, ok = e[6].(map[string]struct{})[p2s]
-						}
-						if !ok {
-							e[6].(map[string]struct{})[s2p] = struct{}{}
-						}
-					}
+					em[id][6] = (em[id][6]).(string) + fmt.Sprintf("\n%s:%s ‑> %s", // non-breaking space/hyphen
+						conn.Type,
+						conn.Self.Name,
+						conn.Peer.Name,
+					)
+				} else if _, ok = em[di]; ok {
+					em[di][6] = (em[di][6]).(string) + fmt.Sprintf("\n%s:%s ‑> %s", // non-breaking space/hyphen
+						conn.Type,
+						conn.Peer.Name,
+						conn.Self.Name,
+					)
 				} else {
 					em[id] = []interface{}{
 						timestamp,
 						id,
 						int64(conn.Self.Pid),
 						int64(conn.Peer.Pid),
-						self,
+						shortname(pt, conn.Self.Pid),
 						peer,
-						map[string]struct{}{},
-					}
-					if conn.Type != "parent" {
-						em[id][6].(map[string]struct{})[s2p] = struct{}{}
+						fmt.Sprintf("%s ‑> %s\n%s:%s ‑> %s", // non-breaking space/hyphen
+							shortname(pt, conn.Self.Pid),
+							shortname(pt, conn.Peer.Pid),
+							conn.Type,
+							conn.Self.Name,
+							conn.Peer.Name,
+						),
 					}
 				}
 			}
@@ -256,11 +240,6 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 	es := make([][]interface{}, len(em))
 	i = 0
 	for _, e := range em {
-		var ss []string
-		for s := range e[6].(map[string]struct{}) {
-			ss = append(ss, s)
-		}
-		e[6] = strings.Join(ss, ", ")
 		es[i] = e
 		i++
 	}
@@ -281,21 +260,31 @@ func family(pt process.Table, pid Pid) process.Table {
 	for pid := pt[pid].Ppid; pid > 1; pid = pt[pid].Ppid { // ancestors
 		ft[pid] = pt[pid]
 	}
-	pids := process.FlatTree(process.FindTree(process.BuildTree(pt), pid), 0) // descendants
+	pids := process.FlatTree(process.FindTree(process.BuildTree(pt), pid)) // descendants
 	for _, pid := range pids {
 		ft[pid] = pt[pid]
 	}
 	return ft
 }
 
-// fullname formats the full Executable name and pid.
-func fullname(pt process.Table, pid Pid) string {
-	return fmt.Sprintf("%s[%d]", pt[pid].Executable, pid)
+// longname formats the full Executable name and pid.
+func longname(pt process.Table, pid Pid) string {
+	if p, ok := pt[pid]; ok {
+		name := p.Executable
+		if name == "" {
+			name = p.Id.Name
+		}
+		return fmt.Sprintf("%s[%d]", name, pid)
+	}
+	return ""
 }
 
-// shortname formats the base Executable name and pid.
+// shortname formats process name and pid.
 func shortname(pt process.Table, pid Pid) string {
-	return fmt.Sprintf("%s[%d]", filepath.Base(pt[pid].Executable), pid)
+	if p, ok := pt[pid]; ok {
+		return fmt.Sprintf("%s[%d]", p.Id.Name, pid)
+	}
+	return ""
 }
 
 // hostname resolves the host name for an ip address.
