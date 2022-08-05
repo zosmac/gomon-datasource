@@ -7,7 +7,15 @@ import { MyQuery, MyDataSourceOptions, defaultQuery } from './types';
 export type Properties = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
 export function QueryEditor(props: Properties) {
-  return <></>;
+//  return <></>;
+  const { query } = defaults(props.query, defaultQuery);
+  return (
+    <>
+      <span hidden={query === ''}>
+        <b>Query:</b> {query}
+      </span>
+    </>
+  );
 }
 
 export function ExploreQueryEditor(props: Properties) {

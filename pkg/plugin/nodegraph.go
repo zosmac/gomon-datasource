@@ -182,7 +182,7 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 				nm[conn.Peer.Pid] = append([]interface{}{
 					timestamp,
 					int64(conn.Peer.Pid),
-					pt[conn.Self.Pid].Id.Name,
+					pt[conn.Peer.Pid].Id.Name,
 					conn.Peer.Pid.String(),
 					longname(pt, conn.Peer.Pid),
 					longname(pt, pt[conn.Peer.Pid].Ppid),

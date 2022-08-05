@@ -30,7 +30,7 @@ var (
 		if goarch, ok := os.LookupEnv("GOARCH"); ok {
 			return goarch
 		}
-		return runtime.GOARCH
+		return "amd64" // runtime.GOARCH
 	}()
 
 	// getExecutableName in github.com/grafana/grafana-plugin-sdk-go/build/common.go
@@ -169,7 +169,7 @@ func command(ex, cred string, args ...string) error {
 
 	// For the frontend build, the webpack bundler (https://webpack.js.org) may default to a hash
 	// that has been deprecated. This NODE_OPTIONS environment variable override reenables it.
-	cmd.Env = append(os.Environ(), "NODE_OPTIONS=--openssl-legacy-provider")
+	// cmd.Env = append(os.Environ(), "NODE_OPTIONS=--openssl-legacy-provider")
 
 	if cred != "" { // add credential after echoing out command
 		cmd = exec.Command(ex, append(strings.Fields(credential), args...)...)
