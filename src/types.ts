@@ -7,7 +7,7 @@ export interface MyQuery extends DataQuery {
 
 export const defaultQuery: MyQuery = {
   refId: '',
-  query: '0',
+  query: 'logs',
   streaming: false,
 };
 

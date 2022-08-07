@@ -14,22 +14,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-)
-
-const (
-	// log record regular expressions capture group names.
-	groupTimestamp = "timestamp"
-	groupLevel     = "level"
-	groupHost      = "host"
-	groupProcess   = "process"
-	groupPid       = "pid"
-	groupThread    = "thread"
-	groupSender    = "sender"
-	groupSubCat    = "subcat"
-	groupMessage   = "message"
 )
 
 var (
@@ -53,7 +39,7 @@ var (
 		"fatal": "1", // Alert, Emergency
 	}
 
-	// logRegex for parsing output from the syslog -w -T utc.3 command
+	// logRegex for parsing output from the syslog -w -T utc.3 command.
 	logRegex = regexp.MustCompile(
 		`^(?P<timestamp>\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d\d\d\d\d\d[+-]\d\d\d\d) ` +
 			`(?P<thread>[^ ]+)[ ]+` +
@@ -67,7 +53,7 @@ var (
 			`(?P<message>.*)$`,
 	)
 
-	// syslogRegex for parsing output from the syslog -w -T utc.3 command
+	// syslogRegex for parsing output from the syslog -w -T utc.3 command.
 	syslogRegex = regexp.MustCompile(
 		`^(?P<timestamp>\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d\d\dZ) ` +
 			`(?P<host>[^ ]+) ` +
@@ -143,43 +129,7 @@ func startCommand(cmdline []string) (*bufio.Scanner, error) {
 		return nil, fmt.Errorf("start failed %w", err)
 	}
 
-	log.DefaultLogger.Info("start %q[%d]", cmd.String(), cmd.Process.Pid)
+	log.DefaultLogger.Info(fmt.Sprintf("start %q[%d]", cmd.String(), cmd.Process.Pid))
 
 	return bufio.NewScanner(stdout), nil
-}
-
-func parseLog(sc *bufio.Scanner, regex *regexp.Regexp, format string) {
-	groups := func() map[string]int {
-		g := map[string]int{}
-		for _, name := range regex.SubexpNames() {
-			g[name] = regex.SubexpIndex(name)
-		}
-		return g
-	}()
-
-	for sc.Scan() {
-		match := regex.FindStringSubmatch(sc.Text())
-		if len(match) == 0 || match[0] == "" {
-			continue
-		}
-
-		t, _ := time.Parse(format, match[groups[groupTimestamp]])
-
-		sender := match[groups[groupSender]]
-		if cg, ok := groups[groupSubCat]; ok {
-			sender = match[cg] + ":" + sender
-		}
-
-		message := []interface{}{
-			t,
-			match[groups[groupMessage]],
-			levelMap[strings.ToLower(match[groups[groupLevel]])],
-			fmt.Sprintf("%s[%s]", match[groups[groupProcess]], match[groups[groupPid]]),
-			sender,
-		}
-
-		MsgLock.Lock()
-		Messages = append(Messages, message)
-		MsgLock.Unlock()
-	}
 }

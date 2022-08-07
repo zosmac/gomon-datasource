@@ -54,8 +54,8 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 				"panic", r,
 				"stacktrace", string(buf),
 			)
-			if r, ok := r.(error); ok {
-				resp.Error = r
+			if e, ok := r.(error); ok {
+				resp.Error = e
 			} else {
 				resp.Error = fmt.Errorf("panic in NodeGraph: %v", r)
 			}

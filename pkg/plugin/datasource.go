@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/zosmac/gomon-datasource/pkg/logs"
 )
 
 const (
@@ -68,10 +69,7 @@ type (
 
 	// query from data source.
 	query struct {
-		process   string
 		pid       Pid
-		nodeType  string
-		name      string
 		logs      bool
 		Query     string `json:"query"`
 		Streaming bool   `json:"streaming"`
@@ -137,8 +135,8 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 				"panic", r,
 				"stacktrace", string(buf),
 			)
-			if r, ok := r.(error); ok {
-				err = r
+			if e, ok := r.(error); ok {
+				err = e
 			} else {
 				err = fmt.Errorf("panic in QueryData: %v", r)
 			}
@@ -172,7 +170,7 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 		}
 
 		if q.Query == "logs" {
-			resp.Responses[query.RefID] = Logs(link)
+			resp.Responses[query.RefID] = logs.Read(link)
 		} else {
 			resp.Responses[query.RefID] = NodeGraph(link, q)
 		}
