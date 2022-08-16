@@ -17,38 +17,14 @@ export function ExploreQueryEditor(props: Props) {
   const onSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setValue({...value,
       queryText: event.target.value,
-      metrics: event.target.value === "metrics",
-      logs: event.target.value === "logs",
-      processes: event.target.value === "processes"
     });
 
     onChange({...value,
       queryText: event.target.value,
-      metrics: event.target.value === "metrics",
-      logs: event.target.value === "logs",
-      processes: event.target.value === "processes"
     });
 
     onRunQuery();
   }
-
-  // const onRadioClick = (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   setValue({...value,
-  //     queryText: event.target.value,
-  //     metrics: event.target.value === "metrics",
-  //     logs: event.target.value === "logs",
-  //     processes: event.target.value === "processes"
-  //   });
-
-  //   onChange({...value,
-  //     queryText: event.target.value,
-  //     metrics: event.target.value === "metrics",
-  //     logs: event.target.value === "logs",
-  //     processes: event.target.value === "processes"
-  //   });
-
-  //   onRunQuery();
-  // }
 
   return (
     <>
@@ -58,31 +34,6 @@ export function ExploreQueryEditor(props: Props) {
         <option key={option} value={option}>{option}</option>
       )}
       </select>
-      {/* <Radio group={"report"} buttons={['metrics', 'logs', 'processes']} onClick={onRadioClick} /><br />
-      Selection: {query.queryText} */}
     </>
   );
 }
-
-// function Radio(props: {group: string, buttons: string[], onClick: React.ChangeEventHandler<HTMLInputElement>}) {
-//   const {group, buttons, onClick} = props;
-
-//   const RadioInput = (props: { name: string; value: string; }) => {
-//     const {name, value } = props;
-//     const title = value[0].toUpperCase() + value.slice(1);
-//     return (
-//       <>
-//         {title}: <input type="radio" name={name} value={value} onChange={onClick} />&nbsp;
-//       </>
-//     )
-//   }
-
-//   return (
-//     <>
-//       Select a graph type:<br/>
-//       { buttons.map((button: string) =>
-//         <RadioInput name={group} key={button} value={button} />
-//       )}
-//     </>
-//   );
-// }

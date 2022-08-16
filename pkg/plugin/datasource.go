@@ -20,7 +20,6 @@ import (
 const (
 	// query regular expression capture group names.
 	groupGraph = "graph"
-	groupPid   = "pid"
 )
 
 var (
@@ -29,10 +28,7 @@ var (
 
 	// queryRegex used to read the pid from the query.
 	queryRegex = regexp.MustCompile(
-		`^(?:` +
-			`(?P<graph>metrics|logs|processes)|` +
-			`(?P<pid>-?\d+)|` +
-			`)$`,
+		`^(?P<graph>metrics|logs|processes|-?\d+)$`,
 	)
 
 	queryGroups = func() map[string]int {
@@ -69,12 +65,12 @@ type (
 
 	// query from data source.
 	query struct {
-		pid       Pid
 		QueryText string `json:"queryText"`
-		Metrics   bool   `json:"metrics"`
-		Logs      bool   `json:"logs"`
-		Processes bool   `json:"processes"`
 		Streaming bool   `json:"streaming"`
+		pid       Pid
+		metrics   bool
+		logs      bool
+		processes bool
 	}
 )
 
@@ -171,9 +167,10 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 			continue
 		}
 
-		if q.Logs {
+		if q.metrics {
+		} else if q.logs {
 			resp.Responses[query.RefID] = logs.Read(link)
-		} else if q.Processes {
+		} else if q.processes {
 			resp.Responses[query.RefID] = NodeGraph(link, q)
 		}
 	}
@@ -201,25 +198,25 @@ func parseQuery(message json.RawMessage) (query query, err error) {
 		return
 	}
 
-	// TODO: is this needed? Are boolean properties already set in unmarshaling?
-	// switch match[queryGroups[groupReport]] {
-	// case "metrics":
-	// 	query.metrics = true
-	// case "logs":
-	// 	query.Logs = true
-	// case "processes":
-	// 	query.Processes = true
-	// }
-	if pid, err := strconv.Atoi(match[queryGroups[groupPid]]); err == nil {
-		query.Processes = true
-		query.pid = Pid(pid)
+	switch m := match[queryGroups[groupGraph]]; m {
+	case "metrics":
+		query.metrics = true
+	case "logs":
+		query.logs = true
+	case "processes":
+		query.processes = true
+	default:
+		if pid, err := strconv.Atoi(m); err == nil {
+			query.processes = true
+			query.pid = Pid(pid)
+		}
 	}
 
 	log.DefaultLogger.Info("query regex match",
-		"metrics", query.Metrics,
-		"logs", query.Logs,
-		"processes", query.Processes,
-		"pid", match[queryGroups[groupPid]],
+		"metrics", query.metrics,
+		"logs", query.logs,
+		"processes", query.processes,
+		"pid", strconv.Itoa(int(query.pid)),
 	)
 
 	return query, nil

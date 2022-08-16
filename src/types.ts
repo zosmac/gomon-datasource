@@ -2,18 +2,12 @@ import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface MyQuery extends DataQuery {
   queryText: string;
-  metrics: boolean;
-  logs: boolean;
-  processes: boolean;
   streaming: boolean;
 }
 
 export const defaultQuery: MyQuery = {
   refId: '',
-  queryText: '?',
-  metrics: false,
-  logs: false,
-  processes: false,
+  queryText: '',
   streaming: false,
 };
 
