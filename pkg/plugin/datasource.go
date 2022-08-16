@@ -19,8 +19,8 @@ import (
 
 const (
 	// query regular expression capture group names.
-	groupLogs = "logs"
-	groupPid  = "pid"
+	groupGraph = "graph"
+	groupPid   = "pid"
 )
 
 var (
@@ -30,7 +30,7 @@ var (
 	// queryRegex used to read the pid from the query.
 	queryRegex = regexp.MustCompile(
 		`^(?:` +
-			`(?P<logs>logs)|` +
+			`(?P<graph>metrics|logs|processes)|` +
 			`(?P<pid>-?\d+)|` +
 			`)$`,
 	)
@@ -70,8 +70,10 @@ type (
 	// query from data source.
 	query struct {
 		pid       Pid
-		logs      bool
-		Query     string `json:"query"`
+		QueryText string `json:"queryText"`
+		Metrics   bool   `json:"metrics"`
+		Logs      bool   `json:"logs"`
+		Processes bool   `json:"processes"`
 		Streaming bool   `json:"streaming"`
 	}
 )
@@ -151,7 +153,7 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 	dsi.Query.Requests += 1
 	resp = backend.NewQueryDataResponse()
 
-	link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"query":"${__value.raw}"}]`,
+	link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"queryText":"${__value.raw}"}]`,
 		req.PluginContext.DataSourceInstanceSettings.Name,
 	)
 
@@ -169,9 +171,9 @@ func (dsi *instance) QueryData(ctx context.Context, req *backend.QueryDataReques
 			continue
 		}
 
-		if q.Query == "logs" {
+		if q.Logs {
 			resp.Responses[query.RefID] = logs.Read(link)
-		} else {
+		} else if q.Processes {
 			resp.Responses[query.RefID] = NodeGraph(link, q)
 		}
 	}
@@ -194,17 +196,29 @@ func parseQuery(message json.RawMessage) (query query, err error) {
 		"query", query,
 	)
 
-	match := queryRegex.FindStringSubmatch(query.Query)
+	match := queryRegex.FindStringSubmatch(query.QueryText)
 	if len(match) == 0 || match[0] == "" {
 		return
 	}
 
-	query.logs = match[queryGroups[groupLogs]] != ""
-	pid, _ := strconv.Atoi(match[queryGroups[groupPid]])
-	query.pid = Pid(pid)
+	// TODO: is this needed? Are boolean properties already set in unmarshaling?
+	// switch match[queryGroups[groupReport]] {
+	// case "metrics":
+	// 	query.metrics = true
+	// case "logs":
+	// 	query.Logs = true
+	// case "processes":
+	// 	query.Processes = true
+	// }
+	if pid, err := strconv.Atoi(match[queryGroups[groupPid]]); err == nil {
+		query.Processes = true
+		query.pid = Pid(pid)
+	}
 
 	log.DefaultLogger.Info("query regex match",
-		"logs", query.logs,
+		"metrics", query.Metrics,
+		"logs", query.Logs,
+		"processes", query.Processes,
 		"pid", match[queryGroups[groupPid]],
 	)
 

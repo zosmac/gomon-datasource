@@ -1,5 +1,5 @@
 import defaults from 'lodash/defaults';
-import React, { ChangeEvent, PureComponent } from 'react';
+import React from 'react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { LegacyForms } from '@grafana/ui';
 
@@ -7,10 +7,10 @@ import { defaultDataSourceOptions, MyDataSourceOptions, MySecureJsonData } from 
 
 const { FormField, SecretFormField } = LegacyForms;
 
-interface Properties extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
+interface Props extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
 
-export class ConfigEditor extends PureComponent<Properties> {
-  onHostChange = (event: ChangeEvent<HTMLInputElement>) => {
+export class ConfigEditor extends React.PureComponent<Props> {
+  onHostChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     const jsonData = {
       ...options.jsonData,
@@ -19,7 +19,7 @@ export class ConfigEditor extends PureComponent<Properties> {
     onOptionsChange({ ...options, jsonData });
   };
 
-  onPathChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onPathChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     const jsonData = {
       ...options.jsonData,
@@ -29,7 +29,7 @@ export class ConfigEditor extends PureComponent<Properties> {
   };
 
   // Secure field (only sent to the backend)
-  onUserChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onUserChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     onOptionsChange({
       ...options,
@@ -41,7 +41,7 @@ export class ConfigEditor extends PureComponent<Properties> {
   };
 
   // Secure field (only sent to the backend)
-  onPasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onPasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     onOptionsChange({
       ...options,

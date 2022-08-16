@@ -24,12 +24,13 @@ type (
 		CommandLine `gomon:""`
 	}
 
+	// Endpoint identifies one end of a connection.
 	Endpoint struct {
 		Name string `json:"name" gomon:"property"`
 		Pid  Pid    `json:"pid" gomon:"property"`
 	}
 
-	// Connection represents an inter-process or host/data connection
+	// Connection represents an inter-process or host/data connection.
 	Connection struct {
 		Type string   `json:"type" gomon:"property"`
 		Self Endpoint `json:"self" gomon:"property"`
@@ -44,6 +45,7 @@ type (
 	}
 )
 
+// ID returns the identifier for a process message.
 func (p *Process) ID() string {
 	return p.Id.Name + "[" + p.Id.Pid.String() + "]"
 }

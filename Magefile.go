@@ -30,7 +30,7 @@ var (
 		if goarch, ok := os.LookupEnv("GOARCH"); ok {
 			return goarch
 		}
-		return "amd64" // runtime.GOARCH
+		return runtime.GOARCH
 	}()
 
 	// getExecutableName in github.com/grafana/grafana-plugin-sdk-go/build/common.go

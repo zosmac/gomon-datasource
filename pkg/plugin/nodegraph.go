@@ -62,7 +62,7 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 		}
 	}()
 
-	log.DefaultLogger.Info("NodeGraph requested", "node", query.Query)
+	log.DefaultLogger.Info("NodeGraph requested", "node", query.QueryText)
 
 	ft := process.Table{}
 	pt := process.BuildTable()
