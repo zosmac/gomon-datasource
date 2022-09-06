@@ -36,66 +36,66 @@ var (
 	messageChan = make(chan []interface{}, 100)
 
 	// levelMap maps various applications' log levels to a common set fatal/error/warn/info/debug/trace.
-	levelMap = map[string]string{
-		"emerg":      "fatal", // Apache
-		"emergency":  "fatal", // syslog
-		"fatal":      "fatal",
-		"fault":      "fatal", // macOS
-		"panic":      "fatal", // syslog, Postgres
-		"alert":      "error", // syslog, Apache
-		"crash":      "error", // RabbitMQ
-		"crit":       "error", // syslog, Apache
-		"critical":   "error", // syslog, RabbitMQ
-		"err":        "error", // syslog, Consul, Vault
-		"error":      "error",
-		"supervisor": "warn", // RabbitMQ
-		"warn":       "warn",
-		"warning":    "warn", // syslog, Postgres
-		"info":       "info",
-		"":           "info", // treat unknown as info
-		"log":        "info", // Postgres
-		"notice":     "info", // syslog, Postgres, Apache, macOS
-		"statement":  "info", // Postgres
-		"debug":      "debug",
-		"debug1":     "debug", // Postgres
-		"debug2":     "debug", // Postgres
-		"debug3":     "debug", // Postgres
-		"debug4":     "debug", // Postgres
-		"debug5":     "debug", // Postgres
-		"default":    "debug", // macOS
-		"trace":      "trace",
-		"trace1":     "trace", // Apache
-		"trace2":     "trace", // Apache
-		"trace3":     "trace", // Apache
-		"trace4":     "trace", // Apache
-		"trace5":     "trace", // Apache
-		"trace6":     "trace", // Apache
-		"trace7":     "trace", // Apache
-		"trace8":     "trace", // Apache
+	levelMap = map[string]logLevel{
+		"emerg":      levelFatal, // Apache
+		"emergency":  levelFatal, // syslog
+		"fatal":      levelFatal,
+		"fault":      levelFatal, // macOS
+		"panic":      levelFatal, // syslog, Postgres
+		"alert":      levelError, // syslog, Apache
+		"crash":      levelError, // RabbitMQ
+		"crit":       levelError, // syslog, Apache
+		"critical":   levelError, // syslog, RabbitMQ
+		"err":        levelError, // syslog, Consul, Vault
+		"error":      levelError,
+		"supervisor": levelWarn, // RabbitMQ
+		"warn":       levelWarn,
+		"warning":    levelWarn, // syslog, Postgres
+		"info":       levelInfo,
+		"":           levelInfo, // treat unknown as info
+		"log":        levelInfo, // Postgres
+		"notice":     levelInfo, // syslog, Postgres, Apache, macOS
+		"statement":  levelInfo, // Postgres
+		"debug":      levelDebug,
+		"debug1":     levelDebug, // Postgres
+		"debug2":     levelDebug, // Postgres
+		"debug3":     levelDebug, // Postgres
+		"debug4":     levelDebug, // Postgres
+		"debug5":     levelDebug, // Postgres
+		"default":    levelDebug, // macOS
+		"trace":      levelTrace,
+		"trace1":     levelTrace, // Apache
+		"trace2":     levelTrace, // Apache
+		"trace3":     levelTrace, // Apache
+		"trace4":     levelTrace, // Apache
+		"trace5":     levelTrace, // Apache
+		"trace6":     levelTrace, // Apache
+		"trace7":     levelTrace, // Apache
+		"trace8":     levelTrace, // Apache
 	}
 )
 
 func init() {
 	go observe()
+
+	go func() {
+		var messages [][]interface{}
+		for {
+			select {
+			case <-requestChan:
+				messagesChan <- messages
+				messages = nil
+			case message := <-messageChan:
+				messages = append(messages, message)
+			}
+		}
+	}()
 }
 
 func Read(link string) (resp backend.DataResponse) {
 	requestChan <- struct{}{}
 	resp.Frames = logFrames(link, <-messagesChan)
 	return
-}
-
-func observe() {
-	var messages [][]interface{}
-	for {
-		select {
-		case <-requestChan:
-			messagesChan <- messages
-			messages = nil
-		case message := <-messageChan:
-			messages = append(messages, message)
-		}
-	}
 }
 
 func parseLog(sc *bufio.Scanner, regex *regexp.Regexp, format string) {

@@ -4,6 +4,21 @@ package logs
 
 import "github.com/grafana/grafana-plugin-sdk-go/data"
 
+const (
+	// message events.
+	levelFatal logLevel = "fatal"
+	levelError logLevel = "error"
+	levelWarn  logLevel = "warn"
+	levelInfo  logLevel = "info"
+	levelDebug logLevel = "debug"
+	levelTrace logLevel = "trace"
+)
+
+type (
+	// logLevel type.
+	logLevel string
+)
+
 func logFrames(link string, ms [][]interface{}) []*data.Frame {
 	logs := data.NewFrameOfFieldTypes("logs", len(ms),
 		data.FieldTypeTime,

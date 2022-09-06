@@ -20,26 +20,26 @@ import (
 
 var (
 	// osLogLevels maps gomon log levels to OSLog message types
-	osLogLevels = map[string]int{
-		"trace": 0,  // Default
-		"debug": 0,  // Default
-		"info":  1,  // Info
-		"warn":  2,  // Debug
-		"error": 16, // Error
-		"fatal": 17, // Fault
+	osLogLevels = map[logLevel]int{
+		levelTrace: 0,  // Default
+		levelDebug: 0,  // Default
+		levelInfo:  1,  // Info
+		levelWarn:  2,  // Debug
+		levelError: 16, // Error
+		levelFatal: 17, // Fault
 	}
 
 	// syslogLevels maps gomon log levels to syslog log levels
-	syslogLevels = map[string]string{
-		"trace": "7", // Debug
-		"debug": "7", // Debug
-		"info":  "6", // Info, Notice
-		"warn":  "4", // Warning
-		"error": "3", // Error, Critical
-		"fatal": "1", // Alert, Emergency
+	syslogLevels = map[logLevel]string{
+		levelTrace: "7", // Debug
+		levelDebug: "7", // Debug
+		levelInfo:  "6", // Info, Notice
+		levelWarn:  "4", // Warning
+		levelError: "3", // Error, Critical
+		levelFatal: "1", // Alert, Emergency
 	}
 
-	// logRegex for parsing output from the syslog -w -T utc.3 command.
+	// logRegex for parsing output from the log stream --predicate command.
 	logRegex = regexp.MustCompile(
 		`^(?P<timestamp>\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d\d\d\d\d\d[+-]\d\d\d\d) ` +
 			`(?P<thread>[^ ]+)[ ]+` +
@@ -65,17 +65,17 @@ var (
 	)
 )
 
-// init starts the macOS log and syslog commands as sub-processes to stream log entries.
-func init() {
-	logCommand()
-	syslogCommand()
+// observe starts the macOS log and syslog commands as sub-processes to stream log entries.
+func observe() {
+	go logCommand()
+	go syslogCommand()
 }
 
 // logCommand starts the log command to capture OSLog entries (using OSLogStore API directly is MUCH slower)
 func logCommand() {
 	predicate := fmt.Sprintf(
 		"(eventType == 'logEvent') AND (messageType >= %d) AND (NOT eventMessage BEGINSWITH[cd] '%s')",
-		osLogLevels["info"],
+		osLogLevels[levelInfo],
 		"System Policy: gomon",
 	)
 
@@ -90,20 +90,20 @@ func logCommand() {
 	sc.Scan() // ignore second output line
 	sc.Text() //  (it is column headers)
 
-	go parseLog(sc, logRegex, "2006-01-02 15:04:05Z0700")
+	parseLog(sc, logRegex, "2006-01-02 15:04:05Z0700")
 }
 
 // syslogCommand starts the syslog command to capture syslog entries
 func syslogCommand() {
 	sc, err := startCommand(append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
-		syslogLevels["info"]),
+		syslogLevels[levelInfo]),
 	)
 	if err != nil {
 		log.DefaultLogger.Error("syslog command failed", "err", err)
 		return
 	}
 
-	go parseLog(sc, syslogRegex, "2006-01-02 15:04:05Z")
+	parseLog(sc, syslogRegex, "2006-01-02 15:04:05Z")
 }
 
 func startCommand(cmdline []string) (*bufio.Scanner, error) {
