@@ -2,22 +2,53 @@
 
 package logs
 
-import "github.com/grafana/grafana-plugin-sdk-go/data"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
+)
 
 const (
 	// message events.
-	levelFatal logLevel = "fatal"
-	levelError logLevel = "error"
-	levelWarn  logLevel = "warn"
-	levelInfo  logLevel = "info"
-	levelDebug logLevel = "debug"
-	levelTrace logLevel = "trace"
+	levelFatal Level = "fatal"
+	levelError Level = "error"
+	levelWarn  Level = "warn"
+	levelInfo  Level = "info"
+	levelDebug Level = "debug"
+	levelTrace Level = "trace"
 )
 
 type (
-	// logLevel type.
-	logLevel string
+	// Level type.
+	Level string
 )
+
+func (l *Level) MarshalJSON() ([]byte, error) {
+	log.DefaultLogger.Info(
+		"Marshal() level",
+		"level", string(*l),
+	)
+	return []byte(`{ "label": "` + string(*l) + `" }`), nil
+}
+
+func (l *Level) UnmarshalJSON(data []byte) error {
+	var label map[string]string
+	err := json.Unmarshal(data, &label)
+	level, ok := label["label"]
+	if ok {
+		*l = Level(level)
+	} else {
+		err = fmt.Errorf("level does not include label")
+	}
+	log.DefaultLogger.Info(
+		"Unmarshal() level",
+		"data", string(data),
+		"err", err,
+	)
+	return err
+}
 
 func logFrames(link string, ms [][]interface{}) []*data.Frame {
 	logs := data.NewFrameOfFieldTypes("logs", len(ms),
@@ -25,6 +56,7 @@ func logFrames(link string, ms [][]interface{}) []*data.Frame {
 		data.FieldTypeString,
 		data.FieldTypeString,
 		data.FieldTypeString,
+		data.FieldTypeInt32,
 		data.FieldTypeString,
 	)
 	logs.SetFieldNames(
@@ -32,6 +64,7 @@ func logFrames(link string, ms [][]interface{}) []*data.Frame {
 		"message",
 		"level",
 		"process",
+		"pid",
 		"sender",
 	)
 	logs.SetMeta(&data.FrameMeta{
@@ -59,12 +92,16 @@ func logFrames(link string, ms [][]interface{}) []*data.Frame {
 	logs.Fields[3].Config = &data.FieldConfig{
 		DisplayName: "Process",
 		Path:        "process",
+	}
+	logs.Fields[4].Config = &data.FieldConfig{
+		DisplayName: "Pid",
+		Path:        "pid",
 		Links: []data.DataLink{{
 			Title: "${__value.raw}",
 			URL:   link,
 		}},
 	}
-	logs.Fields[4].Config = &data.FieldConfig{
+	logs.Fields[5].Config = &data.FieldConfig{
 		DisplayName: "Sender",
 		Path:        "sender",
 	}

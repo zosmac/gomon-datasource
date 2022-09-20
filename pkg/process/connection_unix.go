@@ -6,7 +6,8 @@ package process
 
 import (
 	"bufio"
-	"fmt"
+	"bytes"
+	"context"
 	"io"
 	"math"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/zosmac/gomon-datasource/pkg/core"
 )
 
 var (
@@ -113,14 +115,51 @@ const (
 	groupState = "state"
 )
 
-func init() {
-	err := lsofCommand()
-	setuid() // after lsof command starts, set to the grafana user
+// Endpoints starts the lsof command to capture process connections.
+func Endpoints(ctx context.Context) {
+	cmd := hostCommand(ctx) // perform OS specific customizations for command
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.DefaultLogger.Error("command to capture open process descriptors failed",
-			"error", err,
+		log.DefaultLogger.Error(
+			"StdoutPipe()",
+			"err", err,
 		)
+		return
 	}
+	stderr := &bytes.Buffer{}
+	cmd.Stderr = stderr
+
+	core.Seteuid()
+	err = cmd.Start()
+	core.Setuid()
+	if err != nil {
+		log.DefaultLogger.Error(
+			"Start()",
+			"command", cmd.String(),
+			"err", err,
+		)
+		return
+	}
+
+	log.DefaultLogger.Info(
+		"Start()",
+		"command", cmd.String(),
+		"pid", strconv.Itoa(cmd.Process.Pid),
+	)
+
+	go parseLsof(stdout)
+
+	go func() {
+		state, err := cmd.Process.Wait()
+		log.DefaultLogger.Info(
+			"Wait()",
+			"command", cmd.String(),
+			"pid", strconv.Itoa(cmd.Process.Pid),
+			"err", err,
+			"rc", strconv.Itoa(state.ExitCode()),
+			"usage", state.SysUsage(),
+		)
+	}()
 }
 
 func addZone(addr string) string {
@@ -137,25 +176,6 @@ func addZone(addr string) string {
 	return net.JoinHostPort(ip, port)
 }
 
-// lsofCommand starts the lsof command to capture process connections.
-func lsofCommand() error {
-	cmd := hostCommand() // perform OS specific customizations for command
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("stdout pipe failed %w", err)
-	}
-	cmd.Stderr = nil // sets to /dev/null
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start failed %w", err)
-	}
-
-	log.DefaultLogger.Info(fmt.Sprintf("start [%d] %q", cmd.Process.Pid, cmd.String()))
-
-	go parseLsof(stdout)
-
-	return nil
-}
-
 // parseLsof parses each line of stdout from the command.
 func parseLsof(stdout io.ReadCloser) {
 	defer func() {
@@ -163,7 +183,8 @@ func parseLsof(stdout io.ReadCloser) {
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.DefaultLogger.Error("parseLsof() panicked",
+			log.DefaultLogger.Error(
+				"parseLsof() Panic",
 				"panic", r,
 				"stacktrace", string(buf),
 			)
@@ -205,7 +226,7 @@ func parseLsof(stdout io.ReadCloser) {
 			continue
 		}
 
-		command := strings.Fields(text[:indexUser])[0]              // COMMAND and PID fields can be jammed together
+		// command := strings.Fields(text[:indexUser])[0]           // COMMAND and PID fields can be jammed together
 		pid, _ := strconv.Atoi(strings.Fields(text[:indexUser])[1]) // so read as one field and split
 		// user := strings.TrimSpace(text[indexUser:indexFd])
 		mode := text[indexMode]
@@ -313,8 +334,6 @@ func parseLsof(stdout io.ReadCloser) {
 			peer = fdType // treat like data connection
 		}
 
-		log.DefaultLogger.Debug(fmt.Sprintf("%s[%d:%s] %s %s %s", command, pid, fd, fdType, self, peer))
-
 		if name != os.DevNull {
 			epm[Pid(pid)] = append(epm[Pid(pid)],
 				Connection{
@@ -339,6 +358,4 @@ func parseLsof(stdout io.ReadCloser) {
 			)
 		}
 	}
-
-	panic(fmt.Errorf("stdout closed %v", sc.Err()))
 }

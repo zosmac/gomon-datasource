@@ -27,10 +27,12 @@ var (
 
 // properties captures the properties of a process.
 func (pid Pid) properties() (Id, Properties) {
-	buf, err := os.ReadFile(filepath.Join("/proc", pid.String(), "stat"))
+	path := filepath.Join("/proc", pid.String(), "stat"))
+	buf, err := os.ReadFile(path)
 	if err != nil {
-		log.DefaultLogger.Error("Cannot read /proc/pid/stat file",
-			"pid", pid.String(), // to format as int rather than float
+		log.DefaultLogger.Error(
+			"ReadFile()",
+			"file", path,
 			"err", err,
 		)
 		return Id{Pid: pid}, Properties{}

@@ -44,13 +44,14 @@ type (
 )
 
 // NodeGraph produces the process connections node graph.
-func NodeGraph(link string, query query) (resp backend.DataResponse) {
+func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.DefaultLogger.Error("NodeGraph() panicked",
+			log.DefaultLogger.Error(
+				"NodeGraph() Panic",
 				"panic", r,
 				"stacktrace", string(buf),
 			)
@@ -62,17 +63,20 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 		}
 	}()
 
-	log.DefaultLogger.Info("NodeGraph requested", "node", query.QueryText)
+	log.DefaultLogger.Info(
+		"NodeGraph()",
+		"pid", pid.String(),
+	)
 
 	ft := process.Table{}
 	pt := process.BuildTable()
 	process.Connections(pt)
 
-	if query.pid > 0 && pt[query.pid] == nil {
-		query.pid = 0 // reset to default
+	if pid > 0 && pt[pid] == nil {
+		pid = 0 // reset to default
 	}
-	if query.pid > 0 { // build this process' "extended family"
-		ft = family(pt, query.pid)
+	if pid > 0 { // build this process' "extended family"
+		ft = family(pt, pid)
 	} else { // only consider non-daemon and remote host connected processes
 		for pid, p := range pt {
 			if p.Ppid > 1 {
@@ -97,7 +101,7 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 			if conn.Self.Pid == 0 || conn.Peer.Pid == 0 || // ignore kernel process
 				conn.Self.Pid == 1 || conn.Peer.Pid == 1 || // ignore launchd processes
 				conn.Self.Pid == conn.Peer.Pid || // ignore inter-process connections
-				query.pid == 0 && conn.Peer.Pid >= math.MaxInt32 { // ignore data connections for the "all process" query
+				pid == 0 && conn.Peer.Pid >= math.MaxInt32 { // ignore data connections for the "all process" query
 				continue
 			}
 
@@ -137,7 +141,8 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 					int64(conn.Self.Pid),
 					host,
 					shortname(pt, conn.Self.Pid),
-					fmt.Sprintf("%s:%s ‑> %s", // non-breaking space/hyphen
+					fmt.Sprintf(
+						"%s:%s ‑> %s", // non-breaking space/hyphen
 						conn.Type,
 						conn.Peer.Name,
 						conn.Self.Name,
@@ -170,7 +175,8 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 						int64(conn.Peer.Pid),
 						shortname(pt, conn.Self.Pid),
 						url.QueryEscape(peer),
-						fmt.Sprintf("%s:%s ‑> %s", // non-breaking space/hyphen
+						fmt.Sprintf(
+							"%s:%s ‑> %s", // non-breaking space/hyphen
 							conn.Type,
 							conn.Self.Name,
 							conn.Peer.Name,
@@ -194,13 +200,15 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 
 				_, ok := em[id]
 				if ok {
-					em[id][6] = (em[id][6]).(string) + fmt.Sprintf("\n%s:%s ‑> %s", // non-breaking space/hyphen
+					em[id][6] = (em[id][6]).(string) + fmt.Sprintf(
+						"\n%s:%s ‑> %s", // non-breaking space/hyphen
 						conn.Type,
 						conn.Self.Name,
 						conn.Peer.Name,
 					)
 				} else if _, ok = em[di]; ok {
-					em[di][6] = (em[di][6]).(string) + fmt.Sprintf("\n%s:%s ‑> %s", // non-breaking space/hyphen
+					em[di][6] = (em[di][6]).(string) + fmt.Sprintf(
+						"\n%s:%s ‑> %s", // non-breaking space/hyphen
 						conn.Type,
 						conn.Peer.Name,
 						conn.Self.Name,
@@ -213,7 +221,8 @@ func NodeGraph(link string, query query) (resp backend.DataResponse) {
 						int64(conn.Peer.Pid),
 						shortname(pt, conn.Self.Pid),
 						peer,
-						fmt.Sprintf("%s ‑> %s\n%s:%s ‑> %s", // non-breaking space/hyphen
+						fmt.Sprintf(
+							"%s ‑> %s\n%s:%s ‑> %s", // non-breaking space/hyphen
 							shortname(pt, conn.Self.Pid),
 							shortname(pt, conn.Peer.Pid),
 							conn.Type,

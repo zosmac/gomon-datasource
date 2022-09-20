@@ -15,7 +15,8 @@ func Connections(pt Table) {
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.DefaultLogger.Error("Connections() panicked",
+			log.DefaultLogger.Error(
+				"Connections() Panic",
 				"panic", r,
 				"stacktrace", string(buf),
 			)

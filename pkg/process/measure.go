@@ -4,64 +4,13 @@ package process
 
 import (
 	"fmt"
-	"os"
-	"os/user"
 	"sort"
-	"strconv"
 	"sync"
-	"syscall"
 
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/zosmac/gomon-datasource/pkg/core"
 )
 
-// seteuid gomon-datasource to owner.
-func seteuid() {
-	err := syscall.Seteuid(euid)
-	log.DefaultLogger.Debug("Seteuid results",
-		"uid", strconv.Itoa(os.Getuid()), // to format as int rather than float
-		"euid", strconv.Itoa(os.Geteuid()), // to format as int rather than float
-		"err", err,
-	)
-}
-
-// setuid gomon-datasource to grafana user.
-func setuid() {
-	err := syscall.Seteuid(os.Getuid())
-	log.DefaultLogger.Debug("Setuid results",
-		"uid", strconv.Itoa(os.Getuid()), // to format as int rather than float
-		"euid", strconv.Itoa(os.Geteuid()), // to format as int rather than float
-		"err", err,
-	)
-}
-
 var (
-	// euid gets the executable's owner id.
-	euid = os.Geteuid()
-
-	// users caches user names for uids.
-	users = names{
-		lookup: func(id int) string {
-			name := strconv.Itoa(id)
-			if u, err := user.LookupId(name); err == nil {
-				name = u.Name
-			}
-			return name
-		},
-		names: map[int]string{},
-	}
-
-	// groups caches group names for gids.
-	groups = names{
-		lookup: func(id int) string {
-			name := strconv.Itoa(id)
-			if g, err := user.LookupGroupId(name); err == nil {
-				name = g.Name
-			}
-			return name
-		},
-		names: map[int]string{},
-	}
-
 	// clMap caches process command lines, which are expensive to query.
 	clMap  = map[Pid]CommandLine{}
 	clLock sync.RWMutex
@@ -75,13 +24,6 @@ var (
 )
 
 type (
-	// names defines a cache type for mapping ids to names.
-	names struct {
-		sync.RWMutex
-		lookup func(int) string
-		names  map[int]string
-	}
-
 	// Table defines a process table as a map of pids to processes.
 	Table map[Pid]*Process
 
@@ -89,24 +31,10 @@ type (
 	Tree map[Pid]Tree
 )
 
-// lookup retrieves and caches name for id.
-func (ns *names) name(id int) string {
-	ns.RLock()
-	name, ok := ns.names[id]
-	ns.RUnlock()
-	if !ok {
-		name = ns.lookup(id)
-		ns.Lock()
-		ns.names[id] = name
-		ns.Unlock()
-	}
-	return name
-}
-
 // BuildTable builds a process table and captures current process state
 func BuildTable() Table {
-	seteuid()
-	defer setuid()
+	core.Seteuid()
+	defer core.Setuid()
 
 	pids, err := getPids()
 	if err != nil {

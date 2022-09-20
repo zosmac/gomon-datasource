@@ -16,38 +16,45 @@ import (
 // TODO: flesh this out so it actually works. So far, this is just placeholder code.
 
 // RunStream initiates data source's stream to channel.
-func (dsi *instance) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
-	dsi.Stream.Streams += 1
-	log.DefaultLogger.Info("RunStream called",
-		"datasource", dsi,
-		"request", req,
+func (ds *DataSource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
+	ds.Stream.Streams += 1
+	log.DefaultLogger.Info(
+		"RunStream()",
+		"datasource", *ds,
+		"request", *req,
 	)
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.DefaultLogger.Info("Context done, finish streaming", "path", req.Path)
+			log.DefaultLogger.Info(
+				"RunStream Cancelled",
+				"path", req.Path,
+			)
 			return nil
 		case <-time.After(time.Second * 10):
-			dsi.Stream.Messages += 1
-			log.DefaultLogger.Info("Stream message",
-				"streams", strconv.Itoa(dsi.Stream.Streams),
-				"messages", strconv.Itoa(dsi.Stream.Messages),
-				"request", req,
+			ds.Stream.Messages += 1
+			log.DefaultLogger.Info(
+				"RunStream()",
+				"path", req.Path,
+				"streams", strconv.Itoa(ds.Stream.Streams),
+				"messages", strconv.Itoa(ds.Stream.Messages),
+				"request", *req,
 			)
 
 			link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"node":"${__value.raw}"}]`,
 				req.PluginContext.DataSourceInstanceSettings.Name,
 			)
 
-			resp := NodeGraph(link, query{Streaming: true})
+			resp := NodeGraph(link, 0)
 			for _, frame := range resp.Frames {
 				if err := sender.SendFrame(frame, data.IncludeAll); err != nil {
-					log.DefaultLogger.Error("Error sending frame",
+					log.DefaultLogger.Error(
+						"SendFrame()",
 						"frame", frame.Name,
 						"err", err,
 					)
-					dsi.Stream.Errors += 1
+					ds.Stream.Errors += 1
 					break
 				}
 			}
@@ -56,10 +63,11 @@ func (dsi *instance) RunStream(ctx context.Context, req *backend.RunStreamReques
 }
 
 // SubscribeStream connects client to stream.
-func (dsi *instance) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
-	dsi.Stream.Subscriptions += 1
-	log.DefaultLogger.Info("SubscribeStream called",
-		"subscriptions", strconv.Itoa(dsi.Stream.Subscriptions),
+func (ds *DataSource) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
+	ds.Stream.Subscriptions += 1
+	log.DefaultLogger.Info(
+		"SubscribeStream()",
+		"subscriptions", strconv.Itoa(ds.Stream.Subscriptions),
 		"request", req,
 	)
 
@@ -74,10 +82,11 @@ func (dsi *instance) SubscribeStream(_ context.Context, req *backend.SubscribeSt
 }
 
 // PublishStream sends client message to the stream.
-func (dsi *instance) PublishStream(_ context.Context, req *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
-	dsi.Stream.Published += 1
-	log.DefaultLogger.Info("PublishStream called",
-		"published", strconv.Itoa(dsi.Stream.Published),
+func (ds *DataSource) PublishStream(_ context.Context, req *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
+	ds.Stream.Published += 1
+	log.DefaultLogger.Info(
+		"PublishStream()",
+		"published", strconv.Itoa(ds.Stream.Published),
 		"request", req,
 	)
 

@@ -1,36 +1,49 @@
 import defaults from 'lodash/defaults';
-import React from 'react';
-import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { LegacyForms } from '@grafana/ui';
+import React, { useState } from 'react';
+import { DataSourcePluginOptionsEditorProps, SelectableValue } from '@grafana/data';
+import { LegacyForms, Label, Select } from '@grafana/ui';
 
-import { defaultDataSourceOptions, MyDataSourceOptions, MySecureJsonData } from './types';
+import { logLevels, defaultDataSourceOptions, MyDataSourceOptions, MySecureJsonData } from './types';
 
 const { FormField, SecretFormField } = LegacyForms;
 
 interface Props extends DataSourcePluginOptionsEditorProps<MyDataSourceOptions> {}
 
-export class ConfigEditor extends React.PureComponent<Props> {
-  onHostChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { onOptionsChange, options } = this.props;
-    const jsonData = {
-      ...options.jsonData,
-      host: event.target.value,
-    };
-    onOptionsChange({ ...options, jsonData });
+export function ConfigEditor(props: Props){
+  const { options, onOptionsChange } = props;
+  const { jsonData, secureJsonFields } = options;
+  const { host, path, level } = defaults(jsonData, defaultDataSourceOptions);
+  const [ getHost, setHost ] = useState(host);
+  const [ getPath, setPath ] = useState(path);
+  const [ getLevel, setLevel ] = useState(level);
+  const secureJsonData = (options.secureJsonData || {}) as MySecureJsonData;
+
+  const onHostChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setHost(event.target.value);
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        host: event.target.value,
+        path: getPath,
+        level: getLevel,
+      },
+    });
   };
 
-  onPathChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { onOptionsChange, options } = this.props;
-    const jsonData = {
-      ...options.jsonData,
-      path: event.target.value,
-    };
-    onOptionsChange({ ...options, jsonData });
+  const onPathChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPath(event.target.value);
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        host: getHost,
+        path: event.target.value,
+        level: getLevel,
+      },
+    });
   };
 
   // Secure field (only sent to the backend)
-  onUserChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { onOptionsChange, options } = this.props;
+  const onUserChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onOptionsChange({
       ...options,
       secureJsonData: {
@@ -41,8 +54,7 @@ export class ConfigEditor extends React.PureComponent<Props> {
   };
 
   // Secure field (only sent to the backend)
-  onPasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { onOptionsChange, options } = this.props;
+  const onPasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onOptionsChange({
       ...options,
       secureJsonData: {
@@ -52,8 +64,7 @@ export class ConfigEditor extends React.PureComponent<Props> {
     });
   };
 
-  onResetUser = () => {
-    const { onOptionsChange, options } = this.props;
+  const onResetUser = () => {
     onOptionsChange({
       ...options,
       secureJsonFields: {
@@ -67,8 +78,7 @@ export class ConfigEditor extends React.PureComponent<Props> {
     });
   };
 
-  onResetPassword = () => {
-    const { onOptionsChange, options } = this.props;
+  const onResetPassword = () => {
     onOptionsChange({
       ...options,
       secureJsonFields: {
@@ -82,62 +92,77 @@ export class ConfigEditor extends React.PureComponent<Props> {
     });
   };
 
-  render() {
-    const { options } = this.props;
-    const { jsonData, secureJsonFields } = options;
-    const { host, path } = defaults(jsonData, defaultDataSourceOptions);
-    const secureJsonData = (options.secureJsonData || {}) as MySecureJsonData;
+  const onSelectLevel = (level: SelectableValue<string>) => {
+    setLevel(level);
+    onOptionsChange({
+      ...options,
+      jsonData: {
+        host: getHost,
+        path: getPath,
+        level: level,
+      },
+    });
+  };
 
-    return (
-      <div className="gf-form-group">
-        <div className="gf-form">
-          <FormField
-            label="Host"
-            placeholder="http://localhost:1234"
-            value={host}
-            labelWidth={6}
-            inputWidth={20}
-            onChange={this.onHostChange}
-          />
-        </div>
-        <div className="gf-form">
-          <FormField
-            label="Path"
-            placeholder="/gomon"
-            value={path}
-            labelWidth={6}
-            inputWidth={20}
-            onChange={this.onPathChange}
-          />
-        </div>
-
-        <div className="gf-form">
-          <SecretFormField
-            isConfigured={(secureJsonFields && secureJsonFields.user) as boolean}
-            label="User"
-            placeholder="Gomon user"
-            labelWidth={6}
-            inputWidth={20}
-            value={secureJsonData.user || ''}
-            onChange={this.onUserChange}
-            onReset={this.onResetUser}
-          />
-        </div>
-        <div className="gf-form-inline">
-          <div className="gf-form">
-            <SecretFormField
-              isConfigured={(secureJsonFields && secureJsonFields.password) as boolean}
-              label="Password"
-              placeholder="Gomon user password"
-              labelWidth={6}
-              inputWidth={20}
-              value={secureJsonData.password || ''}
-              onChange={this.onPasswordChange}
-              onReset={this.onResetPassword}
-            />
-          </div>
-        </div>
+  return (
+    <div className="gf-form-group">
+      <div className="gf-form">
+        <FormField
+          label="Host"
+          placeholder="http://localhost:1234"
+          value={getHost}
+          labelWidth={5}
+          inputWidth={12}
+          onChange={onHostChange}
+        />
       </div>
-    );
-  }
+
+      <div className="gf-form">
+        <FormField
+          label="Path"
+          placeholder="/gomon"
+          value={getPath}
+          labelWidth={5}
+          inputWidth={12}
+          onChange={onPathChange}
+        />
+      </div>
+
+      <div className="gf-form">
+        <SecretFormField
+          isConfigured={(secureJsonFields && secureJsonFields.user) as boolean}
+          label="User"
+          placeholder="Gomon user"
+          labelWidth={5}
+          inputWidth={12}
+          value={secureJsonData.user || ''}
+          onChange={onUserChange}
+          onReset={onResetUser}
+        />
+      </div>
+      <div className="gf-form">
+        <SecretFormField
+          isConfigured={(secureJsonFields && secureJsonFields.password) as boolean}
+          label="Password"
+          placeholder="Gomon user password"
+          labelWidth={5}
+          inputWidth={12}
+          value={secureJsonData.password || ''}
+          onChange={onPasswordChange}
+          onReset={onResetPassword}
+        />
+      </div>
+
+      <div className="gf-form">
+        <Label className="gf-form-label width-5">Log Level</Label>
+        <Select
+          width={24}
+          options={logLevels}
+          placeholder="Choose log level"
+          value={getLevel}
+          onChange={onSelectLevel}
+        />
+      </div>
+    </div>
+  );
 }

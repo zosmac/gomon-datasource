@@ -4,8 +4,9 @@ package logs
 
 import (
 	"bufio"
-	"fmt"
+	"context"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,7 +37,7 @@ var (
 	messageChan = make(chan []interface{}, 100)
 
 	// levelMap maps various applications' log levels to a common set fatal/error/warn/info/debug/trace.
-	levelMap = map[string]logLevel{
+	levelMap = map[string]Level{
 		"emerg":      levelFatal, // Apache
 		"emergency":  levelFatal, // syslog
 		"fatal":      levelFatal,
@@ -75,8 +76,9 @@ var (
 	}
 )
 
-func init() {
-	go observe()
+// Observer starts the log monitor.
+func Observer(ctx context.Context, level Level) {
+	go observe(ctx, level)
 
 	go func() {
 		var messages [][]interface{}
@@ -112,7 +114,6 @@ func parseLog(sc *bufio.Scanner, regex *regexp.Regexp, format string) {
 		if len(match) == 0 || match[0] == "" {
 			continue
 		}
-
 		queue(groups, format, match)
 	}
 }
@@ -125,11 +126,13 @@ func queue(groups map[string]int, format string, match []string) {
 		sender = match[cg] + ":" + sender
 	}
 
+	pid, _ := strconv.Atoi(match[groups[groupPid]])
 	messageChan <- []interface{}{
 		t,
 		match[groups[groupMessage]],
-		levelMap[strings.ToLower(match[groups[groupLevel]])],
-		fmt.Sprintf("%s[%s]", match[groups[groupProcess]], match[groups[groupPid]]),
+		string(levelMap[strings.ToLower(match[groups[groupLevel]])]),
+		match[groups[groupProcess]],
+		int32(pid),
 		sender,
 	}
 }

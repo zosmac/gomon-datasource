@@ -12,6 +12,8 @@ import (
 	"bytes"
 	"fmt"
 	"unsafe"
+
+	"github.com/zosmac/gomon-datasource/pkg/core"
 )
 
 var (
@@ -46,8 +48,8 @@ func (pid Pid) properties() (Id, Properties) {
 			Pgid:        int(bsi.pbsi_pgid),
 			UID:         int(bsi.pbsi_uid),
 			GID:         int(bsi.pbsi_gid),
-			Username:    users.name(int(bsi.pbsi_uid)),
-			Groupname:   groups.name(int(bsi.pbsi_gid)),
+			Username:    core.Username(int(bsi.pbsi_uid)),
+			Groupname:   core.Groupname(int(bsi.pbsi_gid)),
 			Status:      status[bsi.pbsi_status],
 			CommandLine: pid.commandLine(),
 		}

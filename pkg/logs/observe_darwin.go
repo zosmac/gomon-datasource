@@ -9,10 +9,13 @@ import "C"
 
 import (
 	"bufio"
+	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
@@ -20,7 +23,7 @@ import (
 
 var (
 	// osLogLevels maps gomon log levels to OSLog message types
-	osLogLevels = map[logLevel]int{
+	osLogLevels = map[Level]int{
 		levelTrace: 0,  // Default
 		levelDebug: 0,  // Default
 		levelInfo:  1,  // Info
@@ -30,7 +33,7 @@ var (
 	}
 
 	// syslogLevels maps gomon log levels to syslog log levels
-	syslogLevels = map[logLevel]string{
+	syslogLevels = map[Level]string{
 		levelTrace: "7", // Debug
 		levelDebug: "7", // Debug
 		levelInfo:  "6", // Info, Notice
@@ -66,22 +69,26 @@ var (
 )
 
 // observe starts the macOS log and syslog commands as sub-processes to stream log entries.
-func observe() {
-	go logCommand()
-	go syslogCommand()
+func observe(ctx context.Context, level Level) {
+	go logCommand(ctx, level)
+	go syslogCommand(ctx, level)
 }
 
 // logCommand starts the log command to capture OSLog entries (using OSLogStore API directly is MUCH slower)
-func logCommand() {
+func logCommand(ctx context.Context, level Level) {
 	predicate := fmt.Sprintf(
 		"(eventType == 'logEvent') AND (messageType >= %d) AND (NOT eventMessage BEGINSWITH[cd] '%s')",
-		osLogLevels[levelInfo],
+		osLogLevels[level],
 		"System Policy: gomon",
 	)
 
-	sc, err := startCommand(append(strings.Fields("log stream --predicate"), predicate))
+	sc, err := startCommand(ctx, append(strings.Fields("log stream --predicate"), predicate))
 	if err != nil {
-		log.DefaultLogger.Error("log command failed", "err", err)
+		log.DefaultLogger.Error(
+			"startCommand(log stream)",
+			"level", syslogLevels[level],
+			"err", err,
+		)
 		return
 	}
 
@@ -94,20 +101,24 @@ func logCommand() {
 }
 
 // syslogCommand starts the syslog command to capture syslog entries
-func syslogCommand() {
-	sc, err := startCommand(append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
-		syslogLevels[levelInfo]),
+func syslogCommand(ctx context.Context, level Level) {
+	sc, err := startCommand(ctx, append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
+		syslogLevels[level]),
 	)
 	if err != nil {
-		log.DefaultLogger.Error("syslog command failed", "err", err)
+		log.DefaultLogger.Error(
+			"startCommand(syslog)",
+			"level", syslogLevels[level],
+			"err", err,
+		)
 		return
 	}
 
 	parseLog(sc, syslogRegex, "2006-01-02 15:04:05Z")
 }
 
-func startCommand(cmdline []string) (*bufio.Scanner, error) {
-	cmd := exec.Command(cmdline[0], cmdline[1:]...)
+func startCommand(ctx context.Context, cmdline []string) (*bufio.Scanner, error) {
+	cmd := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
 
 	// ensure that no open descriptors propagate to child
 	if n := C.proc_pidinfo(
@@ -122,14 +133,32 @@ func startCommand(cmdline []string) (*bufio.Scanner, error) {
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("stdout pipe failed %w", err)
+		return nil, fmt.Errorf("StdoutPipe() %w", err)
 	}
-	cmd.Stderr = nil // sets to /dev/null
+	stderr := &bytes.Buffer{}
+	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("start failed %w", err)
+		return nil, fmt.Errorf("Start() %w", err)
 	}
 
-	log.DefaultLogger.Info(fmt.Sprintf("start %q[%d]", cmd.String(), cmd.Process.Pid))
+	log.DefaultLogger.Info(
+		"Start()",
+		"command", cmd.String(),
+		"pid", strconv.Itoa(cmd.Process.Pid),
+	)
+
+	go func() {
+		state, err := cmd.Process.Wait()
+		log.DefaultLogger.Info(
+			"Wait()",
+			"command", cmd.String(),
+			"pid", strconv.Itoa(cmd.Process.Pid),
+			"err", err,
+			"rc", strconv.Itoa(state.ExitCode()),
+			"usage", state.SysUsage(),
+			"stderr", stderr.String(),
+		)
+	}()
 
 	return bufio.NewScanner(stdout), nil
 }

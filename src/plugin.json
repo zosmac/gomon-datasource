@@ -8,13 +8,16 @@
   "backend": true,
   "executable": "gomon-datasource",
   "info": {
-    "description": "Gomon Process Node Graph Data Source",
+    "description": "Gomon Data Source",
     "author": {
       "name": "The Gomon Project",
       "url": "https://github.com/zosmac"
     },
     "keywords": [
-      "gomon process nodegraph"
+      "gomon",
+      "system metrics",
+      "system logs",
+      "process nodegraph"
     ],
     "logos": {
       "small": "img/logo.svg",
