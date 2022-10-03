@@ -3,7 +3,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -12,7 +11,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 
-	"github.com/zosmac/gomon-datasource/pkg/logs"
+	"github.com/zosmac/gomon-datasource/pkg/core"
 	"github.com/zosmac/gomon-datasource/pkg/plugin"
 	"github.com/zosmac/gomon-datasource/pkg/process"
 )
@@ -29,15 +28,13 @@ func main() {
 		"compiler", fmt.Sprintf("%s %s_%s", runtime.Version(), runtime.GOOS, runtime.GOARCH),
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	process.Endpoints(ctx)
-	logs.Observer(ctx, logs.Level("info"))
+	defer core.Cancel()
+
+	process.Endpoints()
 
 	ip := datasource.NewInstanceProvider(plugin.DataSourceInstanceFactory)
 	ds := &plugin.DataSource{
-		IM:    instancemgmt.New(ip),
-		Level: logs.Level("info"),
+		IM: instancemgmt.New(ip),
 	}
 
 	if err := datasource.Serve(datasource.ServeOpts{

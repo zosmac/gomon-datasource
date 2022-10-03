@@ -6,12 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
 const (
-	// message events.
+	// log levels.
 	levelFatal Level = "fatal"
 	levelError Level = "error"
 	levelWarn  Level = "warn"
@@ -20,34 +19,43 @@ const (
 	levelTrace Level = "trace"
 )
 
+var (
+	// validLevels for log levels.
+	validLevels = map[Level]struct{}{
+		levelFatal: {},
+		levelError: {},
+		levelWarn:  {},
+		levelInfo:  {},
+		levelDebug: {},
+		levelTrace: {},
+	}
+)
+
 type (
 	// Level type.
 	Level string
 )
 
 func (l *Level) MarshalJSON() ([]byte, error) {
-	log.DefaultLogger.Info(
-		"Marshal() level",
-		"level", string(*l),
-	)
-	return []byte(`{ "label": "` + string(*l) + `" }`), nil
+	if _, ok := validLevels[*l]; !ok {
+		*l = levelInfo
+	}
+	return []byte(fmt.Sprintf(`{"label":%q}`, *l)), nil
 }
 
 func (l *Level) UnmarshalJSON(data []byte) error {
 	var label map[string]string
-	err := json.Unmarshal(data, &label)
+	json.Unmarshal(data, &label)
 	level, ok := label["label"]
 	if ok {
-		*l = Level(level)
-	} else {
-		err = fmt.Errorf("level does not include label")
+		_, ok = validLevels[Level(level)]
 	}
-	log.DefaultLogger.Info(
-		"Unmarshal() level",
-		"data", string(data),
-		"err", err,
-	)
-	return err
+	if !ok {
+		level = string(levelInfo)
+	}
+
+	*l = Level(level)
+	return nil
 }
 
 func logFrames(link string, ms [][]interface{}) []*data.Frame {

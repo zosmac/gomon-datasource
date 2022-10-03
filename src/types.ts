@@ -10,7 +10,9 @@ export const levelDebug: SelectableValue<string> = { label: 'debug' };
 export const levelInfo:  SelectableValue<string> = { label: 'info' };
 export const levelWarn:  SelectableValue<string> = { label: 'warn' };
 export const levelError: SelectableValue<string> = { label: 'error' };
-export const logLevels: Array<SelectableValue<string>> = [ levelTrace, levelDebug, levelInfo, levelWarn, levelError ];
+export const levels: Array<SelectableValue<string>> = [ levelTrace, levelDebug, levelInfo, levelWarn, levelError ];
+
+export const maxInt32: number = 2**31-1;
 
 export interface MyQuery extends DataQuery {
   graph?: SelectableValue<string>

@@ -7,7 +7,6 @@ package process
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"io"
 	"math"
 	"net"
@@ -116,8 +115,8 @@ const (
 )
 
 // Endpoints starts the lsof command to capture process connections.
-func Endpoints(ctx context.Context) {
-	cmd := hostCommand(ctx) // perform OS specific customizations for command
+func Endpoints() {
+	cmd := hostCommand() // perform OS specific customizations for command
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.DefaultLogger.Error(

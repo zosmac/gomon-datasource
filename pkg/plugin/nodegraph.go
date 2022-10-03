@@ -72,7 +72,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 	pt := process.BuildTable()
 	process.Connections(pt)
 
-	if pid > 0 && pt[pid] == nil {
+	if pid != 0 && pt[pid] == nil {
 		pid = 0 // reset to default
 	}
 	if pid > 0 { // build this process' "extended family"

@@ -78,10 +78,6 @@ func Upgrade() error {
 		return err
 	}
 
-	if err := command("go", "", "mod", "tidy", "-v"); err != nil {
-		return err
-	}
-
 	return nil
 }
 

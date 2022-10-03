@@ -1,9 +1,9 @@
 import defaults from 'lodash/defaults';
 import React, { useState } from 'react';
 import { DataSourcePluginOptionsEditorProps, SelectableValue } from '@grafana/data';
-import { LegacyForms, Label, Select } from '@grafana/ui';
+import { LegacyForms, InlineField, Select } from '@grafana/ui';
 
-import { logLevels, defaultDataSourceOptions, MyDataSourceOptions, MySecureJsonData } from './types';
+import { levels, defaultDataSourceOptions, MyDataSourceOptions, MySecureJsonData } from './types';
 
 const { FormField, SecretFormField } = LegacyForms;
 
@@ -154,14 +154,18 @@ export function ConfigEditor(props: Props){
       </div>
 
       <div className="gf-form">
-        <Label className="gf-form-label width-5">Log Level</Label>
-        <Select
-          width={24}
-          options={logLevels}
-          placeholder="Choose log level"
-          value={getLevel}
-          onChange={onSelectLevel}
-        />
+        <InlineField
+          label="Log Level"
+          labelWidth={10}
+        >
+          <Select
+            width={24}
+            options={levels}
+            placeholder="Choose log level"
+            value={getLevel}
+            onChange={onSelectLevel}
+          />
+        </InlineField>
       </div>
     </div>
   );

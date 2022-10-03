@@ -69,16 +69,16 @@ var (
 )
 
 // observe starts the macOS log and syslog commands as sub-processes to stream log entries.
-func observe(ctx context.Context, level Level) {
-	go logCommand(ctx, level)
-	go syslogCommand(ctx, level)
+func observe(ctx context.Context) {
+	go logCommand(ctx)
+	go syslogCommand(ctx)
 }
 
 // logCommand starts the log command to capture OSLog entries (using OSLogStore API directly is MUCH slower)
-func logCommand(ctx context.Context, level Level) {
+func logCommand(ctx context.Context) {
 	predicate := fmt.Sprintf(
 		"(eventType == 'logEvent') AND (messageType >= %d) AND (NOT eventMessage BEGINSWITH[cd] '%s')",
-		osLogLevels[level],
+		osLogLevels[currLevel],
 		"System Policy: gomon",
 	)
 
@@ -86,7 +86,7 @@ func logCommand(ctx context.Context, level Level) {
 	if err != nil {
 		log.DefaultLogger.Error(
 			"startCommand(log stream)",
-			"level", syslogLevels[level],
+			"level", syslogLevels[currLevel],
 			"err", err,
 		)
 		return
@@ -101,14 +101,14 @@ func logCommand(ctx context.Context, level Level) {
 }
 
 // syslogCommand starts the syslog command to capture syslog entries
-func syslogCommand(ctx context.Context, level Level) {
+func syslogCommand(ctx context.Context) {
 	sc, err := startCommand(ctx, append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
-		syslogLevels[level]),
+		syslogLevels[currLevel]),
 	)
 	if err != nil {
 		log.DefaultLogger.Error(
 			"startCommand(syslog)",
-			"level", syslogLevels[level],
+			"level", syslogLevels[currLevel],
 			"err", err,
 		)
 		return

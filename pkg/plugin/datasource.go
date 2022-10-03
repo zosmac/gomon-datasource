@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
@@ -17,10 +18,18 @@ import (
 )
 
 const (
-	// graphs.
+	// graph types supported.
 	graphMetrics   Graph = "metrics"
 	graphLogs      Graph = "logs"
 	graphProcesses Graph = "processes"
+)
+
+var (
+	validGraphs = map[Graph]struct{}{
+		graphMetrics:   {},
+		graphLogs:      {},
+		graphProcesses: {},
+	}
 )
 
 type (
@@ -29,23 +38,24 @@ type (
 )
 
 func (g *Graph) MarshalJSON() ([]byte, error) {
-	log.DefaultLogger.Info(
-		"Marshal() graph",
-		"graph", string(*g),
-	)
-	return []byte(`{ "label": "` + string(*g) + `" }`), nil
+	if _, ok := validGraphs[*g]; !ok {
+		*g = graphMetrics
+	}
+	return []byte(fmt.Sprintf(`{"label":%q}`, *g)), nil
 }
 
 func (g *Graph) UnmarshalJSON(data []byte) error {
 	var label map[string]string
-	err := json.Unmarshal(data, &label)
-	log.DefaultLogger.Info(
-		"Unmarshal() graph",
-		"data", string(data),
-		"err", err,
-	)
-	*g = Graph(label["label"])
-	return err
+	json.Unmarshal(data, &label)
+	graph, ok := label["label"]
+	if ok {
+		_, ok = validGraphs[Graph(graph)]
+	}
+	if !ok {
+		graph = string(graphMetrics)
+	}
+	*g = Graph(graph)
+	return nil
 }
 
 var (
@@ -79,29 +89,29 @@ type (
 
 	// instance of the datasource.
 	Instance struct {
-		ID    int64
-		Graph Graph
-		Pid   Pid
-	}
-
-	// query from data source.
-	query struct {
-		Graph     Graph      `json:"graph"`
-		Level     logs.Level `json:"level"`
-		Pid       Pid        `json:"pid"`
-		Streaming bool       `json:"streaming"`
+		ID       int64
+		Settings struct {
+			Host     string     `json:"host"`
+			Path     string     `json:"path"`
+			User     string     `json:"user"`
+			Password string     `json:"password"`
+			Level    logs.Level `json:"level"`
+		}
 	}
 )
 
-// DataSourceInstanceFactory creates an gomon data source instance.
+// DataSourceInstanceFactory creates a data source instance.
 func DataSourceInstanceFactory(dsis backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	log.DefaultLogger.Info(
 		"DataSourceInstanceFactory()",
 		"settings", dsis,
 	)
 
-	query := query{}
-	if err := json.Unmarshal(dsis.JSONData, &query); err != nil {
+	instance := Instance{
+		ID: dsis.ID,
+	}
+
+	if err := json.Unmarshal(dsis.JSONData, &instance.Settings); err != nil {
 		log.DefaultLogger.Error(
 			"Unmarshal()",
 			"settings", dsis,
@@ -110,10 +120,9 @@ func DataSourceInstanceFactory(dsis backend.DataSourceInstanceSettings) (instanc
 		return nil, err
 	}
 
-	return &Instance{
-		ID:    dsis.ID,
-		Graph: query.Graph,
-	}, nil
+	logs.Observer(instance.Settings.Level)
+
+	return &instance, nil
 }
 
 // Dispose run when instance cleaned up.
@@ -129,37 +138,37 @@ func (dsi *Instance) Dispose() {
 // CheckHealth run when "save and test" of data source run.
 func (ds *DataSource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	ds.Health.Checks += 1
-	log.DefaultLogger.Info(
-		"CheckHealth()",
-		"datasource", *ds,
-		"request", *req,
-	)
 
-	err := json.Unmarshal(req.PluginContext.DataSourceInstanceSettings.JSONData, ds)
+	var err error
+	status := backend.HealthStatusOk
+	message := "datasource healthy, see log for details"
+	var details []byte
+
+	if err = json.Unmarshal(req.PluginContext.DataSourceInstanceSettings.JSONData, ds); err == nil {
+		details, err = json.Marshal(ds)
+	}
+	if err != nil {
+		status = backend.HealthStatusError
+		message = err.Error()
+	}
+
 	log.DefaultLogger.Info(
 		"CheckHealth()",
 		"datasource", *ds,
 		"request", *req,
+		"status", status,
+		"message", message,
 		"err", err,
 	)
 
-	details, _ := json.Marshal(ds)
-
-	if ds.Level == "" {
-		return &backend.CheckHealthResult{
-			Status:      backend.HealthStatusError,
-			Message:     "specify a valid log level",
-			JSONDetails: details,
-		}, nil
-	}
-
 	return &backend.CheckHealthResult{
-		Status:      backend.HealthStatusOk,
-		Message:     "datasource healthy, see log for details",
+		Status:      status,
+		Message:     message,
 		JSONDetails: details,
-	}, nil
+	}, err
 }
 
+// CallResource of data source.
 func (ds *DataSource) CallResource(_ context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	log.DefaultLogger.Info(
 		"CallResource()",
@@ -171,7 +180,7 @@ func (ds *DataSource) CallResource(_ context.Context, req *backend.CallResourceR
 	return nil
 }
 
-// QueryData handler for instanceSettings.
+// QueryData handler for data source.
 func (ds *DataSource) QueryData(_ context.Context, req *backend.QueryDataRequest) (resp *backend.QueryDataResponse, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -193,34 +202,44 @@ func (ds *DataSource) QueryData(_ context.Context, req *backend.QueryDataRequest
 		}
 	}()
 
-	log.DefaultLogger.Info(
-		"QueryData()",
-		"datasource", *ds,
-		"request", *req,
-	)
-
 	ds.Query.Requests += 1
 	resp = backend.NewQueryDataResponse()
 
-	link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"graph":{"label":"processes"},"pid":${__value.raw}}]`,
-		req.PluginContext.DataSourceInstanceSettings.Name,
-	)
+	err = ds.IM.Do(req.PluginContext, func(instance *Instance) error {
+		log.DefaultLogger.Info(
+			"Query datasource instance",
+			"id", strconv.FormatInt(instance.ID, 10),
+			"level", instance.Settings.Level,
+		)
 
-	err = ds.IM.Do(req.PluginContext, func(settings *Instance) error {
 		for _, query := range req.Queries {
 			ds.Query.Queries += 1
 
-			log.DefaultLogger.Info(
-				"Query",
-				"queries", strconv.Itoa(ds.Query.Queries),
-				"query", query,
-			)
-
-			q, err := parseQuery(query.JSON)
-			if err != nil {
+			q := struct {
+				Graph Graph `json:"graph"`
+				Pid   Pid   `json:"pid"`
+			}{}
+			if err = json.Unmarshal(query.JSON, &q); err != nil {
 				resp.Responses[query.RefID] = backend.DataResponse{Error: err}
 				continue
 			}
+
+			to := time.Now()
+			from := to.Add(-5 * time.Minute)
+
+			log.DefaultLogger.Info(
+				"Query",
+				"graph", q.Graph,
+				"pid", q.Pid.String(),
+				"from", from.Format("2006-01-02T15:04:05Z07:00"),
+				"to", to.Format("2006-01-02T15:04:05Z07:00"),
+			)
+
+			link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=[%q,%q,%q,{"graph":{"label":"processes"},"pid":${__value.raw}}]`,
+				"now-5m",
+				"now",
+				req.PluginContext.DataSourceInstanceSettings.Name,
+			)
 
 			switch q.Graph {
 			case graphMetrics:
@@ -234,24 +253,4 @@ func (ds *DataSource) QueryData(_ context.Context, req *backend.QueryDataRequest
 	})
 
 	return resp, nil
-}
-
-// parseQuery extracts the query from the request JSON.
-func parseQuery(message json.RawMessage) (query query, err error) {
-	// Unmarshal the JSON into our queryModel.
-	if err = json.Unmarshal(message, &query); err != nil {
-		log.DefaultLogger.Error(
-			"Unmarshal()",
-			"json", string(message),
-			"err", err,
-		)
-		return
-	}
-
-	log.DefaultLogger.Info(
-		"parseQuery()",
-		"query", query,
-	)
-
-	return query, nil
 }

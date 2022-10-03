@@ -8,17 +8,18 @@ package process
 import "C"
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/zosmac/gomon-datasource/pkg/core"
 )
 
 // hostCommand builds a host specific command line for lsof.
-func hostCommand(ctx context.Context) *exec.Cmd {
+func hostCommand() *exec.Cmd {
 	cmdline := strings.Fields(fmt.Sprintf("lsof -l -n -P -X -r%dm====%%T====", 10))
-	cmd := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
+	cmd := exec.CommandContext(core.Ctx, cmdline[0], cmdline[1:]...)
 
 	// ensure that no open descriptors propagate to child
 	if n := C.proc_pidinfo(

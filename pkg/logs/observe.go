@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/zosmac/gomon-datasource/pkg/core"
 )
 
 const (
@@ -27,6 +29,12 @@ const (
 )
 
 var (
+	// cancel stops exiting logs observer.
+	cancel context.CancelFunc = func() {}
+
+	// currLevel is the current minimum log level captured.
+	currLevel Level
+
 	// requestChan signals that Grafana requests the latest log messages.
 	requestChan = make(chan struct{})
 
@@ -77,18 +85,35 @@ var (
 )
 
 // Observer starts the log monitor.
-func Observer(ctx context.Context, level Level) {
-	go observe(ctx, level)
+func Observer(level Level) {
+	if level == currLevel {
+		return
+	}
+	currLevel = level
+
+	cancel() // stop current observer
+	var ctx context.Context
+	ctx, cancel = context.WithCancel(core.Ctx)
+
+	observe(ctx)
 
 	go func() {
 		var messages [][]interface{}
 		for {
 			select {
 			case <-requestChan:
+				if len(messages) > 1000 {
+					messages = messages[len(messages)-1000:]
+				}
 				messagesChan <- messages
 				messages = nil
 			case message := <-messageChan:
 				messages = append(messages, message)
+				if len(messages) > 1000 {
+					messages = messages[len(messages)-900:]
+				}
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
@@ -96,7 +121,12 @@ func Observer(ctx context.Context, level Level) {
 
 func Read(link string) (resp backend.DataResponse) {
 	requestChan <- struct{}{}
-	resp.Frames = logFrames(link, <-messagesChan)
+	messages := <-messagesChan
+	log.DefaultLogger.Info(
+		"Read()",
+		"messages", strconv.Itoa(len(messages)),
+	)
+	resp.Frames = logFrames(link, messages)
 	return
 }
 
