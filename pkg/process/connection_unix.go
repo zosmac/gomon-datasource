@@ -146,19 +146,9 @@ func Endpoints() {
 		"pid", strconv.Itoa(cmd.Process.Pid),
 	)
 
-	go parseLsof(stdout)
+	go core.Wait(cmd)
 
-	go func() {
-		state, err := cmd.Process.Wait()
-		log.DefaultLogger.Info(
-			"Wait()",
-			"command", cmd.String(),
-			"pid", strconv.Itoa(cmd.Process.Pid),
-			"err", err,
-			"rc", strconv.Itoa(state.ExitCode()),
-			"usage", state.SysUsage(),
-		)
-	}()
+	go parseLsof(stdout)
 }
 
 func addZone(addr string) string {

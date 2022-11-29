@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/zosmac/gomon-datasource/pkg/core"
 )
 
 var (
@@ -147,18 +148,7 @@ func startCommand(ctx context.Context, cmdline []string) (*bufio.Scanner, error)
 		"pid", strconv.Itoa(cmd.Process.Pid),
 	)
 
-	go func() {
-		state, err := cmd.Process.Wait()
-		log.DefaultLogger.Info(
-			"Wait()",
-			"command", cmd.String(),
-			"pid", strconv.Itoa(cmd.Process.Pid),
-			"err", err,
-			"rc", strconv.Itoa(state.ExitCode()),
-			"usage", state.SysUsage(),
-			"stderr", stderr.String(),
-		)
-	}()
+	go core.Wait(cmd)
 
 	return bufio.NewScanner(stdout), nil
 }

@@ -2,19 +2,14 @@
 # Copyright © 2021 The Gomon Project.
 
 # define Gomon version value
-version="1.0.0"
+version="2.0.0"
 
 # Create LICENSE file
 
 license() {
    file=`mktemp`
-   if [ -n "$1" ]; then
-      export GOOS=$1
-      srcpath=`go env GOPATH`/src
-   else
-      srcpath=$(dirname `pwd`)
-      rm -f $srcpath/LICENSE
-   fi
+   srcpath=$(dirname `pwd`)
+   rm -f $srcpath/LICENSE
    cat <<EOF >$file
 Copyright © 2021 The Gomon Project.
 
@@ -28,6 +23,10 @@ EOF
 
 go mod tidy
 license
+
+# Identify the module
+
+module=`go list -m`
 
 # Generate Dependencies
 
@@ -43,8 +42,11 @@ import (
 )
 
 var (
-\t// srcpath to strip from source file path in log messages.
-\tsrcpath = \"$srcpath\"
+\t// Srcpath to strip from source file path in log messages.
+\tSrcpath = "'$srcpath$'"
+
+\t// module identifies the import package path for this module.
+\tmodule = "'$module$'"
 
 \t// executable identifies the full command path.
 \texecutable, _ = os.Executable()
