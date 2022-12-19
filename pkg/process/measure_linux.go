@@ -74,12 +74,12 @@ func (pid Pid) commandLine() CommandLine {
 	cl.Executable, _ = os.Readlink(filepath.Join("/proc", pid.String(), "exe"))
 
 	if arg, err := os.ReadFile(filepath.Join("/proc", pid.String(), "cmdline")); err == nil && len(arg) > 2 {
-		cl.Args = strings.Split(string(arg[:len(arg)-2]), "\000")
+		cl.Args = strings.Split(string(arg[:len(arg)-2]), "\x00")
 		cl.Args = cl.Args[1:]
 	}
 
 	if env, err := os.ReadFile(filepath.Join("/proc", pid.String(), "environ")); err == nil {
-		cl.Envs = strings.Split(string(env), "\000")
+		cl.Envs = strings.Split(string(env), "\x00")
 	}
 
 	clLock.Lock()
@@ -124,10 +124,8 @@ func measures(filename string) (map[string]string, error) {
 	m := map[string]string{}
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
-		s := strings.SplitN(sc.Text(), ":", 2)
-		if len(s) == 2 {
-			k := s[0]
-			v := strings.Fields(s[1])
+		if k, v, ok := strings.Cut(sc.Text(), ":"); ok {
+			v := strings.Fields(v)
 			if len(v) > 0 {
 				m[k] = v[0]
 			}
