@@ -19,6 +19,11 @@ import (
 	"github.com/zosmac/gomon-datasource/pkg/process"
 )
 
+type (
+	// Pid alias for Pid in process package.
+	Pid = process.Pid
+)
+
 var (
 	// hnMap caches resolver host name lookup.
 	hnMap  = map[string]string{}
@@ -36,11 +41,6 @@ var (
 	yellow  = map[string]interface{}{"mode": "fixed", "fixedColor": "yellow"}
 	magenta = map[string]interface{}{"mode": "fixed", "fixedColor": "magenta"}
 	cyan    = map[string]interface{}{"mode": "fixed", "fixedColor": "cyan"}
-)
-
-type (
-	// Pid alias for Pid in process package.
-	Pid = process.Pid
 )
 
 // NodeGraph produces the process connections node graph.

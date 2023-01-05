@@ -8,6 +8,15 @@ import (
 	"sync"
 )
 
+type (
+	// names defines a cache type for mapping ids to names.
+	names struct {
+		sync.RWMutex
+		lookup func(int) string
+		names  map[int]string
+	}
+)
+
 var (
 	// users caches user names for uids.
 	users = names{
@@ -31,15 +40,6 @@ var (
 			return name
 		},
 		names: map[int]string{},
-	}
-)
-
-type (
-	// names defines a cache type for mapping ids to names.
-	names struct {
-		sync.RWMutex
-		lookup func(int) string
-		names  map[int]string
 	}
 )
 

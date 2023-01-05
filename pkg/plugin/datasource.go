@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -15,6 +14,11 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/zosmac/gomon-datasource/pkg/logs"
+)
+
+type (
+	// Graph type.
+	Graph string
 )
 
 const (
@@ -30,11 +34,6 @@ var (
 		graphLogs:      {},
 		graphProcesses: {},
 	}
-)
-
-type (
-	// Graph type.
-	Graph string
 )
 
 func (g *Graph) MarshalJSON() ([]byte, error) {
@@ -57,11 +56,6 @@ func (g *Graph) UnmarshalJSON(data []byte) error {
 	*g = Graph(graph)
 	return nil
 }
-
-var (
-	// Hostname identifies the host.
-	Hostname, _ = os.Hostname()
-)
 
 type (
 	DataSource struct {
