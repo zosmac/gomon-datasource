@@ -1,4 +1,4 @@
-// Copyright © 2021 The Gomon Project.
+// Copyright © 2021-2023 The Gomon Project.
 
 package main
 
@@ -15,9 +15,6 @@ import (
 	"github.com/zosmac/gomon-datasource/pkg/plugin"
 	"github.com/zosmac/gomon-datasource/pkg/process"
 )
-
-// go generate creates version.go to set vmmp and package dependencies for version.
-//go:generate ./generate.sh
 
 func main() {
 	log.DefaultLogger.Info(

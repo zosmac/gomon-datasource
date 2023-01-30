@@ -97,4 +97,4 @@ $GRAFANA_DIR/bin/$(go env GOOS)-$(go env GOARCH)/grafana-server
 
 ## Notices
 
-Copyright © 2021 The Gomon Project.
+Copyright © 2021-2023 The Gomon Project.
