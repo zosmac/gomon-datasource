@@ -1,6 +1,6 @@
 Copyright © 2021-2023 The Gomon Project.
 
-Gomon: the Go language based system monitor.
+Gomon Datasource: Gomon Backend Data Source Plugin for Grafana.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
