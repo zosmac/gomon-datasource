@@ -21,7 +21,7 @@ type (
 var (
 	// clMap caches process command lines, which are expensive to query.
 	clMap  = map[Pid]CommandLine{}
-	clLock sync.RWMutex
+	clLock sync.Mutex
 
 	// oldPids identifies pids no longer active.
 	oldPids map[Pid]struct{}

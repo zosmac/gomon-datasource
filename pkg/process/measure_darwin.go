@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/zosmac/gomon-datasource/pkg/core"
+	"github.com/zosmac/gocore"
 )
 
 var (
@@ -48,8 +48,8 @@ func (pid Pid) properties() (Id, Properties) {
 			Pgid:        int(bsi.pbsi_pgid),
 			UID:         int(bsi.pbsi_uid),
 			GID:         int(bsi.pbsi_gid),
-			Username:    core.Username(int(bsi.pbsi_uid)),
-			Groupname:   core.Groupname(int(bsi.pbsi_gid)),
+			Username:    gocore.Username(int(bsi.pbsi_uid)),
+			Groupname:   gocore.Groupname(int(bsi.pbsi_gid)),
 			Status:      status[bsi.pbsi_status],
 			CommandLine: pid.commandLine(),
 		}
@@ -57,10 +57,9 @@ func (pid Pid) properties() (Id, Properties) {
 
 // commandLine retrieves process command, arguments, and environment.
 func (pid Pid) commandLine() CommandLine {
-	clLock.RLock()
-	cl, ok := clMap[pid]
-	clLock.RUnlock()
-	if ok {
+	clLock.Lock()
+	defer clLock.Unlock()
+	if cl, ok := clMap[pid]; ok {
 		return cl
 	}
 
@@ -92,14 +91,12 @@ func (pid Pid) commandLine() CommandLine {
 		}
 	}
 
-	cl = CommandLine{
+	cl := CommandLine{
 		Executable: executable,
 		Args:       args,
 		Envs:       envs,
 	}
-	clLock.Lock()
 	clMap[pid] = cl
-	clLock.Unlock()
 	return cl
 }
 

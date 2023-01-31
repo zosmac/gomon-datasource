@@ -55,8 +55,8 @@ func (pid Pid) properties() (Id, Properties) {
 			Pgid:        pgid,
 			UID:         uid,
 			GID:         gid,
-			Username:    users.name(uid),
-			Groupname:   groups.name(gid),
+			Username:    gocore.Username(uid),
+			Groupname:   gocore.Groupname(gid),
 			Status:      status[fields[2][0]],
 			CommandLine: pid.commandLine(),
 		}
@@ -64,28 +64,23 @@ func (pid Pid) properties() (Id, Properties) {
 
 // commandLine retrieves process command, arguments, and environment.
 func (pid Pid) commandLine() CommandLine {
-	clLock.RLock()
-	cl, ok := clMap[pid]
-	clLock.RUnlock()
-	if ok {
+	clLock.Lock()
+	defer 	clLock.Unlock()
+	if cl, ok := clMap[pid]
 		return cl
 	}
 
+	cl := CommandLine{}
 	cl.Executable, _ = os.Readlink(filepath.Join("/proc", pid.String(), "exe"))
-
 	if arg, err := os.ReadFile(filepath.Join("/proc", pid.String(), "cmdline")); err == nil && len(arg) > 2 {
 		cl.Args = strings.Split(string(arg[:len(arg)-2]), "\x00")
 		cl.Args = cl.Args[1:]
 	}
-
 	if env, err := os.ReadFile(filepath.Join("/proc", pid.String(), "environ")); err == nil {
 		cl.Envs = strings.Split(string(env), "\x00")
 	}
 
-	clLock.Lock()
 	clMap[pid] = cl
-	clLock.Unlock()
-
 	return cl
 }
 

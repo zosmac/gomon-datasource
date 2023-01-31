@@ -300,7 +300,6 @@ func shortname(pt process.Table, pid Pid) string {
 func hostname(ip string) string {
 	hnLock.Lock()
 	defer hnLock.Unlock()
-
 	if host, ok := hnMap[ip]; ok {
 		return host
 	}
