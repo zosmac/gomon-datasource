@@ -3,11 +3,9 @@ module github.com/zosmac/gomon-datasource
 go 1.20
 
 require (
-	github.com/grafana/grafana-plugin-sdk-go v0.140.0
-	github.com/zosmac/gocore v0.0.0-unpublished
+	github.com/grafana/grafana-plugin-sdk-go v0.149.0
+	github.com/zosmac/gocore v0.0.0-20230207175904-7640a1c1c4f6
 )
-
-replace github.com/zosmac/gocore v0.0.0-unpublished => ../../../gocore
 
 require (
 	github.com/StackExchange/wmi v1.2.1 // indirect
@@ -20,7 +18,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/flatbuffers v2.0.0+incompatible // indirect
-	github.com/google/go-cmp v0.5.7 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/hashicorp/go-hclog v0.14.1 // indirect
