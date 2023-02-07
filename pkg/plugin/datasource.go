@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/zosmac/gomon-datasource/pkg/logs"
@@ -94,29 +95,30 @@ type (
 	}
 )
 
-// DataSourceInstanceFactory creates a data source instance.
-func DataSourceInstanceFactory(dsis backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	log.DefaultLogger.Info(
-		"DataSourceInstanceFactory()",
-		"settings", dsis,
-	)
-
-	instance := Instance{
-		ID: dsis.ID,
-	}
-
-	if err := json.Unmarshal(dsis.JSONData, &instance.Settings); err != nil {
-		log.DefaultLogger.Error(
-			"Unmarshal()",
+func Factory(ctx context.Context) datasource.InstanceFactoryFunc {
+	return func(dsis backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+		log.DefaultLogger.Info(
+			"DataSourceInstanceFactory()",
 			"settings", dsis,
-			"err", err,
 		)
-		return nil, err
+
+		instance := Instance{
+			ID: dsis.ID,
+		}
+
+		if err := json.Unmarshal(dsis.JSONData, &instance.Settings); err != nil {
+			log.DefaultLogger.Error(
+				"Unmarshal()",
+				"settings", dsis,
+				"err", err,
+			)
+			return nil, err
+		}
+
+		logs.Observer(ctx, instance.Settings.Level)
+
+		return &instance, nil
 	}
-
-	logs.Observer(instance.Settings.Level)
-
-	return &instance, nil
 }
 
 // Dispose run when instance cleaned up.

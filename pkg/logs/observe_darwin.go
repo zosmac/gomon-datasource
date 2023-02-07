@@ -8,18 +8,13 @@ package logs
 import "C"
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/zosmac/gomon-datasource/pkg/core"
+	"github.com/zosmac/gocore"
 )
 
 var (
@@ -83,7 +78,7 @@ func logCommand(ctx context.Context) {
 		"System Policy: gomon",
 	)
 
-	sc, err := startCommand(ctx, append(strings.Fields("log stream --predicate"), predicate))
+	sc, err := gocore.StartCommand(ctx, append(strings.Fields("log stream --predicate"), predicate))
 	if err != nil {
 		log.DefaultLogger.Error(
 			"startCommand(log stream)",
@@ -103,7 +98,7 @@ func logCommand(ctx context.Context) {
 
 // syslogCommand starts the syslog command to capture syslog entries
 func syslogCommand(ctx context.Context) {
-	sc, err := startCommand(ctx, append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
+	sc, err := gocore.StartCommand(ctx, append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
 		syslogLevels[currLevel]),
 	)
 	if err != nil {
@@ -116,39 +111,4 @@ func syslogCommand(ctx context.Context) {
 	}
 
 	parseLog(sc, syslogRegex, "2006-01-02 15:04:05Z")
-}
-
-func startCommand(ctx context.Context, cmdline []string) (*bufio.Scanner, error) {
-	cmd := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
-
-	// ensure that no open descriptors propagate to child
-	if n := C.proc_pidinfo(
-		C.int(os.Getpid()),
-		C.PROC_PIDLISTFDS,
-		0,
-		nil,
-		0,
-	); n >= 3*C.PROC_PIDLISTFD_SIZE {
-		cmd.ExtraFiles = make([]*os.File, (n/C.PROC_PIDLISTFD_SIZE)-3) // close gomon files in child
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("StdoutPipe() %w", err)
-	}
-	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("Start() %w", err)
-	}
-
-	log.DefaultLogger.Info(
-		"Start()",
-		"command", cmd.String(),
-		"pid", strconv.Itoa(cmd.Process.Pid),
-	)
-
-	go core.Wait(cmd)
-
-	return bufio.NewScanner(stdout), nil
 }

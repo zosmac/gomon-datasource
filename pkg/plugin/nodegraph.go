@@ -10,12 +10,12 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 
+	"github.com/zosmac/gocore"
 	"github.com/zosmac/gomon-datasource/pkg/process"
 )
 
@@ -25,10 +25,6 @@ type (
 )
 
 var (
-	// hnMap caches resolver host name lookup.
-	hnMap  = map[string]string{}
-	hnLock sync.Mutex
-
 	// host/proc specify the arc for the circle drawn around a node.
 	// Each arc has a specific color set in its field metadata to create a circle that identifies the node type.
 	hostArc = []interface{}{1.0, 0.0, 0.0, 0.0, 0.0} // red
@@ -127,9 +123,9 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 					timestamp,
 					int64(conn.Peer.Pid),
 					conn.Type + ":" + port,
-					hostname(host),
+					gocore.Hostname(host),
 					host,
-					hostname(host),
+					gocore.Hostname(host),
 				}, arc...)
 
 				// flip the source and target to get Host shown to left in node graph
@@ -294,26 +290,6 @@ func shortname(pt process.Table, pid Pid) string {
 		return fmt.Sprintf("%s[%d]", p.Id.Name, pid)
 	}
 	return ""
-}
-
-// hostname resolves the host name for an ip address.
-func hostname(ip string) string {
-	hnLock.Lock()
-	defer hnLock.Unlock()
-	if host, ok := hnMap[ip]; ok {
-		return host
-	}
-
-	hnMap[ip] = ip
-	go func() { // initiate hostname lookup
-		if hosts, err := net.LookupAddr(ip); err == nil {
-			hnLock.Lock()
-			hnMap[ip] = hosts[0]
-			hnLock.Unlock()
-		}
-	}()
-
-	return ip
 }
 
 // if query.Streaming {

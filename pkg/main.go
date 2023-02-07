@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -11,25 +12,32 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 
-	"github.com/zosmac/gomon-datasource/pkg/core"
+	"github.com/zosmac/gocore"
 	"github.com/zosmac/gomon-datasource/pkg/plugin"
 	"github.com/zosmac/gomon-datasource/pkg/process"
 )
 
 func main() {
+	gocore.Main(Main)
+}
+
+func Main(ctx context.Context) {
 	log.DefaultLogger.Info(
 		"gomon data source plugin starting",
-		"plugin", executable,
-		"version", vmmp,
-		"build_date", buildDate,
+		// "plugin", executable,
+		// "version", vmmp,
+		// "build_date", buildDate,
 		"compiler", fmt.Sprintf("%s %s_%s", runtime.Version(), runtime.GOOS, runtime.GOARCH),
 	)
 
-	defer core.Cancel()
+	if err := process.Endpoints(ctx); err != nil {
+		log.DefaultLogger.Warn(
+			"Remote Host and Inter-Process Connections Unavailable",
+			"err", err,
+		)
+	}
 
-	process.Endpoints()
-
-	ip := datasource.NewInstanceProvider(plugin.DataSourceInstanceFactory)
+	ip := datasource.NewInstanceProvider(plugin.Factory(ctx))
 	ds := &plugin.DataSource{
 		IM: instancemgmt.New(ip),
 	}

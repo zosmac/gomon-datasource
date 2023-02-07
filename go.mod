@@ -1,11 +1,13 @@
 module github.com/zosmac/gomon-datasource
 
-go 1.19
+go 1.20
 
 require (
 	github.com/grafana/grafana-plugin-sdk-go v0.140.0
-	github.com/zosmac/gocore v0.0.0-20230131033943-b1aa0a7a5b09
+	github.com/zosmac/gocore v0.0.0-unpublished
 )
+
+replace github.com/zosmac/gocore v0.0.0-unpublished => ../../../gocore
 
 require (
 	github.com/StackExchange/wmi v1.2.1 // indirect

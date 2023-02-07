@@ -12,7 +12,6 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/zosmac/gomon-datasource/pkg/core"
 )
 
 const (
@@ -85,17 +84,18 @@ var (
 )
 
 // Observer starts the log monitor.
-func Observer(level Level) {
+func Observer(ctx context.Context, level Level) {
 	if level == currLevel {
 		return
 	}
 	currLevel = level
 
-	cancel() // stop current observer
-	var ctx context.Context
-	ctx, cancel = context.WithCancel(core.Ctx)
+	cancel() // stop current observer if running
 
-	observe(ctx)
+	chld, cncl := context.WithCancel(ctx)
+	cancel = cncl
+
+	observe(chld) // start new observer
 
 	go func() {
 		var messages [][]interface{}
@@ -112,7 +112,7 @@ func Observer(level Level) {
 				if len(messages) > 1000 {
 					messages = messages[len(messages)-900:]
 				}
-			case <-ctx.Done():
+			case <-chld.Done():
 				return
 			}
 		}

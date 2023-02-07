@@ -6,8 +6,7 @@ package process
 
 import (
 	"bufio"
-	"bytes"
-	"io"
+	"context"
 	"math"
 	"net"
 	"os"
@@ -17,7 +16,7 @@ import (
 	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/zosmac/gomon-datasource/pkg/core"
+	"github.com/zosmac/gocore"
 )
 
 var (
@@ -115,40 +114,17 @@ const (
 )
 
 // Endpoints starts the lsof command to capture process connections.
-func Endpoints() {
-	cmd := hostCommand() // perform OS specific customizations for command
-	stdout, err := cmd.StdoutPipe()
+func Endpoints(ctx context.Context) error {
+	gocore.Seteuid()
+	stdout, err := gocore.StartCommand(ctx, lsofCommand())
+	gocore.Setuid()
 	if err != nil {
-		log.DefaultLogger.Error(
-			"StdoutPipe()",
-			"err", err,
-		)
-		return
+		return err
 	}
-	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-
-	core.Seteuid()
-	err = cmd.Start()
-	core.Setuid()
-	if err != nil {
-		log.DefaultLogger.Error(
-			"Start()",
-			"command", cmd.String(),
-			"err", err,
-		)
-		return
-	}
-
-	log.DefaultLogger.Info(
-		"Start()",
-		"command", cmd.String(),
-		"pid", strconv.Itoa(cmd.Process.Pid),
-	)
-
-	go core.Wait(cmd)
 
 	go parseLsof(stdout)
+
+	return nil
 }
 
 func addZone(addr string) string {
@@ -166,7 +142,7 @@ func addZone(addr string) string {
 }
 
 // parseLsof parses each line of stdout from the command.
-func parseLsof(stdout io.ReadCloser) {
+func parseLsof(sc *bufio.Scanner) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := make([]byte, 4096)
@@ -183,7 +159,6 @@ func parseLsof(stdout io.ReadCloser) {
 	epm := map[Pid][]Connection{}
 	var indexUser, indexFd, indexMode /* indexLock, */, indexType, indexDevice, indexSize, indexNode, indexName int
 
-	sc := bufio.NewScanner(stdout)
 	for sc.Scan() {
 		text := sc.Text()
 		if strings.HasPrefix(text, "COMMAND") {
