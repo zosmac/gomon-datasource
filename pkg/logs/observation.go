@@ -4,9 +4,17 @@ package logs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/zosmac/gocore"
+)
+
+type (
+	// Level type.
+	Level string
 )
 
 const (
@@ -20,27 +28,22 @@ const (
 )
 
 var (
-	// validLevels for log levels.
-	validLevels = map[Level]struct{}{
-		levelFatal: {},
-		levelError: {},
-		levelWarn:  {},
-		levelInfo:  {},
-		levelDebug: {},
-		levelTrace: {},
-	}
-)
-
-type (
-	// Level type.
-	Level string
+	// logLevels valid event values for messages, in severity order.
+	logLevels = gocore.ValidValue[Level]{}.Define(
+		levelTrace,
+		levelDebug,
+		levelInfo,
+		levelWarn,
+		levelError,
+		levelFatal,
+	)
 )
 
 func (l *Level) MarshalJSON() ([]byte, error) {
-	if _, ok := validLevels[*l]; !ok {
-		*l = levelInfo
+	if logLevels.IsValid(*l) {
+		return []byte(fmt.Sprintf(`{"label":%q}`, *l)), nil
 	}
-	return []byte(fmt.Sprintf(`{"label":%q}`, *l)), nil
+	return nil, errors.New("valid values are " + strings.Join(logLevels.ValidValues(), ", "))
 }
 
 func (l *Level) UnmarshalJSON(data []byte) error {
@@ -48,7 +51,7 @@ func (l *Level) UnmarshalJSON(data []byte) error {
 	json.Unmarshal(data, &label)
 	level, ok := label["label"]
 	if ok {
-		_, ok = validLevels[Level(level)]
+		_, ok = logLevels[Level(level)]
 	}
 	if !ok {
 		level = string(levelInfo)

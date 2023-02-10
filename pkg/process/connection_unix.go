@@ -119,26 +119,12 @@ func Endpoints(ctx context.Context) error {
 	stdout, err := gocore.StartCommand(ctx, lsofCommand())
 	gocore.Setuid()
 	if err != nil {
-		return err
+		return gocore.Error("StartCommand(lsof)", err)
 	}
 
 	go parseLsof(stdout)
 
 	return nil
-}
-
-func addZone(addr string) string {
-	ip, port, _ := net.SplitHostPort(addr)
-	match := zoneregex.FindStringSubmatch(ip)
-	if match != nil { // strip the zone index from the ipv6 link local address
-		ip = match[1] + match[4]
-		if zone, ok := zones[match[3]]; ok {
-			ip += "%" + zone
-		}
-	} else if zone, ok := zones[ip]; ok {
-		ip += "%" + zone
-	}
-	return net.JoinHostPort(ip, port)
 }
 
 // parseLsof parses each line of stdout from the command.
@@ -322,4 +308,18 @@ func parseLsof(sc *bufio.Scanner) {
 			)
 		}
 	}
+}
+
+func addZone(addr string) string {
+	ip, port, _ := net.SplitHostPort(addr)
+	match := zoneregex.FindStringSubmatch(ip)
+	if match != nil { // strip the zone index from the ipv6 link local address
+		ip = match[1] + match[4]
+		if zone, ok := zones[match[3]]; ok {
+			ip += "%" + zone
+		}
+	} else if zone, ok := zones[ip]; ok {
+		ip += "%" + zone
+	}
+	return net.JoinHostPort(ip, port)
 }

@@ -39,7 +39,7 @@ func (pid Pid) properties() (Id, Properties) {
 	}
 	fields := strings.Fields(string(buf))
 
-	m, _ := measures(filepath.Join("/proc", pid.String(), "status"))
+	m, _ := gocore.Measures(filepath.Join("/proc", pid.String(), "status"))
 
 	ppid, _ := strconv.Atoi(fields[3])
 	pgid, _ := strconv.Atoi(fields[4])
@@ -65,8 +65,8 @@ func (pid Pid) properties() (Id, Properties) {
 // commandLine retrieves process command, arguments, and environment.
 func (pid Pid) commandLine() CommandLine {
 	clLock.Lock()
-	defer 	clLock.Unlock()
-	if cl, ok := clMap[pid]
+	defer clLock.Unlock()
+	if cl, ok := clMap[pid]; ok {
 		return cl
 	}
 
@@ -106,26 +106,4 @@ func getPids() ([]Pid, error) {
 	}
 
 	return pids[:i], nil
-}
-
-// measures reads a /proc filesystem file and produces a map of name:value pairs.
-func measures(filename string) (map[string]string, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	m := map[string]string{}
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if k, v, ok := strings.Cut(sc.Text(), ":"); ok {
-			v := strings.Fields(v)
-			if len(v) > 0 {
-				m[k] = v[0]
-			}
-		}
-	}
-
-	return m, nil
 }

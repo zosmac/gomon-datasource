@@ -7,7 +7,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/zosmac/gomon-datasource/pkg/core"
+	"github.com/zosmac/gocore"
 )
 
 type (
@@ -33,8 +33,8 @@ var (
 
 // BuildTable builds a process table and captures current process state
 func BuildTable() Table {
-	core.Seteuid()
-	defer core.Setuid()
+	gocore.Seteuid()
+	defer gocore.Setuid()
 
 	pids, err := getPids()
 	if err != nil {

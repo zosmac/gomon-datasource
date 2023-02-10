@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/zosmac/gocore"
 	"github.com/zosmac/gomon-datasource/pkg/logs"
 )
 
@@ -112,7 +113,7 @@ func Factory(ctx context.Context) datasource.InstanceFactoryFunc {
 				"settings", dsis,
 				"err", err,
 			)
-			return nil, err
+			return nil, gocore.Error("Unmarshal", err)
 		}
 
 		logs.Observer(ctx, instance.Settings.Level)

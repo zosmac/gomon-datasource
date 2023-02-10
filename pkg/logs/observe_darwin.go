@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/zosmac/gocore"
 )
 
@@ -65,13 +64,16 @@ var (
 )
 
 // observe starts the macOS log and syslog commands as sub-processes to stream log entries.
-func observe(ctx context.Context) {
-	go logCommand(ctx)
-	go syslogCommand(ctx)
+func observe(ctx context.Context) error {
+	err := logCommand(ctx)
+	if err == nil {
+		err = syslogCommand(ctx)
+	}
+	return err
 }
 
 // logCommand starts the log command to capture OSLog entries (using OSLogStore API directly is MUCH slower)
-func logCommand(ctx context.Context) {
+func logCommand(ctx context.Context) error {
 	predicate := fmt.Sprintf(
 		"(eventType == 'logEvent') AND (messageType >= %d) AND (NOT eventMessage BEGINSWITH[cd] '%s')",
 		osLogLevels[currLevel],
@@ -80,12 +82,7 @@ func logCommand(ctx context.Context) {
 
 	sc, err := gocore.StartCommand(ctx, append(strings.Fields("log stream --predicate"), predicate))
 	if err != nil {
-		log.DefaultLogger.Error(
-			"startCommand(log stream)",
-			"level", syslogLevels[currLevel],
-			"err", err,
-		)
-		return
+		return gocore.Error("StartCommand(log stream)", err)
 	}
 
 	sc.Scan() // ignore first output line from log command
@@ -93,22 +90,21 @@ func logCommand(ctx context.Context) {
 	sc.Scan() // ignore second output line
 	sc.Text() //  (it is column headers)
 
-	parseLog(sc, logRegex, "2006-01-02 15:04:05Z0700")
+	go parseLog(ctx, sc, logRegex, "2006-01-02 15:04:05Z0700")
+
+	return nil
 }
 
 // syslogCommand starts the syslog command to capture syslog entries
-func syslogCommand(ctx context.Context) {
+func syslogCommand(ctx context.Context) error {
 	sc, err := gocore.StartCommand(ctx, append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
 		syslogLevels[currLevel]),
 	)
 	if err != nil {
-		log.DefaultLogger.Error(
-			"startCommand(syslog)",
-			"level", syslogLevels[currLevel],
-			"err", err,
-		)
-		return
+		return gocore.Error("StartCommand(syslog)", err)
 	}
 
-	parseLog(sc, syslogRegex, "2006-01-02 15:04:05Z")
+	go parseLog(ctx, sc, syslogRegex, "2006-01-02 15:04:05Z")
+
+	return nil
 }

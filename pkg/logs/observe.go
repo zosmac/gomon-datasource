@@ -12,11 +12,15 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/zosmac/gocore"
 )
 
 const (
 	// log record regular expressions capture group names.
 	groupTimestamp = "timestamp"
+	groupUtc       = "utc"
+	groupTzoffset  = "tzoffset"
+	groupTimezone  = "timezone"
 	groupLevel     = "level"
 	groupHost      = "host"
 	groupProcess   = "process"
@@ -84,9 +88,9 @@ var (
 )
 
 // Observer starts the log monitor.
-func Observer(ctx context.Context, level Level) {
+func Observer(ctx context.Context, level Level) error {
 	if level == currLevel {
-		return
+		return nil // do not restart observer
 	}
 	currLevel = level
 
@@ -95,12 +99,16 @@ func Observer(ctx context.Context, level Level) {
 	chld, cncl := context.WithCancel(ctx)
 	cancel = cncl
 
-	observe(chld) // start new observer
+	if err := observe(chld); err != nil {
+		return gocore.Error("observe", err)
+	}
 
 	go func() {
 		var messages [][]interface{}
 		for {
 			select {
+			case <-chld.Done():
+				return
 			case <-requestChan:
 				if len(messages) > 1000 {
 					messages = messages[len(messages)-1000:]
@@ -112,11 +120,11 @@ func Observer(ctx context.Context, level Level) {
 				if len(messages) > 1000 {
 					messages = messages[len(messages)-900:]
 				}
-			case <-chld.Done():
-				return
 			}
 		}
 	}()
+
+	return nil
 }
 
 func Read(link string) (resp backend.DataResponse) {
@@ -130,7 +138,7 @@ func Read(link string) (resp backend.DataResponse) {
 	return
 }
 
-func parseLog(sc *bufio.Scanner, regex *regexp.Regexp, format string) {
+func parseLog(ctx context.Context, sc *bufio.Scanner, regex *regexp.Regexp, format string) {
 	groups := func() map[string]int {
 		g := map[string]int{}
 		for _, name := range regex.SubexpNames() {
@@ -139,7 +147,19 @@ func parseLog(sc *bufio.Scanner, regex *regexp.Regexp, format string) {
 		return g
 	}()
 
-	for sc.Scan() {
+	readyChan := make(chan struct{})
+	go func() {
+		for sc.Scan() {
+			readyChan <- struct{}{}
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-readyChan:
+		}
 		match := regex.FindStringSubmatch(sc.Text())
 		if len(match) == 0 || match[0] == "" {
 			continue
@@ -150,13 +170,12 @@ func parseLog(sc *bufio.Scanner, regex *regexp.Regexp, format string) {
 
 func queue(groups map[string]int, format string, match []string) {
 	t, _ := time.Parse(format, match[groups[groupTimestamp]])
-
+	pid, _ := strconv.Atoi(match[groups[groupPid]])
 	sender := match[groups[groupSender]]
 	if cg, ok := groups[groupSubCat]; ok {
 		sender = match[cg] + ":" + sender
 	}
 
-	pid, _ := strconv.Atoi(match[groups[groupPid]])
 	messageChan <- []interface{}{
 		t,
 		match[groups[groupMessage]],
