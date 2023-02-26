@@ -232,10 +232,11 @@ func (ds *DataSource) QueryData(_ context.Context, req *backend.QueryDataRequest
 				"to", to.Format("2006-01-02T15:04:05Z07:00"),
 			)
 
-			link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=[%q,%q,%q,{"graph":{"label":"processes"},"pid":${__value.raw}}]`,
+			link := fmt.Sprintf(
+				`http://localhost:3000/explore?orgId=${__org}&left={"datasource":%q,"range":{"from":%q,"to":%q},"queries":[{"graph":{"label":"processes"},"pid":${__value.raw}}]}`,
+				req.PluginContext.DataSourceInstanceSettings.Name,
 				"now-5m",
 				"now",
-				req.PluginContext.DataSourceInstanceSettings.Name,
 			)
 
 			switch q.Graph {
