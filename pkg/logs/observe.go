@@ -131,14 +131,14 @@ func Read(link string) (resp backend.DataResponse) {
 	requestChan <- struct{}{}
 	messages := <-messagesChan
 	log.DefaultLogger.Info(
-		"Read()",
+		"Read",
 		"messages", strconv.Itoa(len(messages)),
 	)
 	resp.Frames = logFrames(link, messages)
 	return
 }
 
-func parseLog(ctx context.Context, sc *bufio.Scanner, regex *regexp.Regexp, format string) {
+func parseLog(sc *bufio.Scanner, regex *regexp.Regexp, format string) {
 	groups := func() map[string]int {
 		g := map[string]int{}
 		for _, name := range regex.SubexpNames() {
@@ -147,19 +147,7 @@ func parseLog(ctx context.Context, sc *bufio.Scanner, regex *regexp.Regexp, form
 		return g
 	}()
 
-	readyChan := make(chan struct{})
-	go func() {
-		for sc.Scan() {
-			readyChan <- struct{}{}
-		}
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-readyChan:
-		}
+	for sc.Scan() {
 		match := regex.FindStringSubmatch(sc.Text())
 		if len(match) == 0 || match[0] == "" {
 			continue

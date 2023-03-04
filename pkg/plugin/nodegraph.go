@@ -60,7 +60,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 	}()
 
 	log.DefaultLogger.Info(
-		"NodeGraph()",
+		"NodeGraph",
 		"pid", pid.String(),
 	)
 

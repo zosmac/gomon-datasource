@@ -6,6 +6,7 @@ import (
 	"context"
 )
 
-func observe(ctx context.Context) {
+func observe(ctx context.Context) error {
 	// TODO: port logs observe code from gomon.
+	return nil
 }

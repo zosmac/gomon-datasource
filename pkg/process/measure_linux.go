@@ -31,7 +31,7 @@ func (pid Pid) properties() (Id, Properties) {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		log.DefaultLogger.Error(
-			"ReadFile()",
+			"ReadFile",
 			"file", path,
 			"err", err,
 		)

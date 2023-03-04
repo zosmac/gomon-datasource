@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"runtime"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
@@ -21,20 +20,16 @@ func main() {
 	gocore.Main(Main)
 }
 
-func Main(ctx context.Context) {
-	log.DefaultLogger.Info(
-		"gomon data source plugin starting",
-		// "plugin", executable,
-		// "version", vmmp,
-		// "build_date", buildDate,
-		"compiler", fmt.Sprintf("%s %s_%s", runtime.Version(), runtime.GOOS, runtime.GOARCH),
-	)
+func Main(ctx context.Context) error {
+	log.DefaultLogger.Info(fmt.Sprintf(
+		"start gomon data source plugin %s %s_%s",
+		runtime.Version(),
+		runtime.GOOS,
+		runtime.GOARCH,
+	))
 
 	if err := process.Endpoints(ctx); err != nil {
-		log.DefaultLogger.Warn(
-			"Remote Host and Inter-Process Connections Unavailable",
-			"err", err,
-		)
+		return gocore.Error("Remote Host and Inter-Process Connections Unavailable", err)
 	}
 
 	ip := datasource.NewInstanceProvider(plugin.Factory(ctx))
@@ -42,16 +37,13 @@ func Main(ctx context.Context) {
 		IM: instancemgmt.New(ip),
 	}
 
-	if err := datasource.Serve(datasource.ServeOpts{
-		CheckHealthHandler:  ds,
-		CallResourceHandler: ds,
-		QueryDataHandler:    ds,
-		StreamHandler:       ds,
-	}); err != nil {
-		log.DefaultLogger.Error(
-			"Serve()",
-			"err", err,
-		)
-		os.Exit(1)
-	}
+	return gocore.Error(
+		"exit",
+		datasource.Serve(datasource.ServeOpts{
+			CheckHealthHandler:  ds,
+			CallResourceHandler: ds,
+			QueryDataHandler:    ds,
+			StreamHandler:       ds,
+		}),
+	)
 }

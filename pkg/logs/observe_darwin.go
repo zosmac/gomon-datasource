@@ -80,9 +80,9 @@ func logCommand(ctx context.Context) error {
 		"System Policy: gomon",
 	)
 
-	sc, err := gocore.StartCommand(ctx, append(strings.Fields("log stream --predicate"), predicate))
+	sc, err := gocore.Spawn(ctx, append(strings.Fields("log stream --predicate"), predicate))
 	if err != nil {
-		return gocore.Error("StartCommand(log stream)", err)
+		return gocore.Error("Spawn(log stream)", err)
 	}
 
 	sc.Scan() // ignore first output line from log command
@@ -90,21 +90,21 @@ func logCommand(ctx context.Context) error {
 	sc.Scan() // ignore second output line
 	sc.Text() //  (it is column headers)
 
-	go parseLog(ctx, sc, logRegex, "2006-01-02 15:04:05Z0700")
+	go parseLog(sc, logRegex, "2006-01-02 15:04:05Z0700")
 
 	return nil
 }
 
 // syslogCommand starts the syslog command to capture syslog entries
 func syslogCommand(ctx context.Context) error {
-	sc, err := gocore.StartCommand(ctx, append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
+	sc, err := gocore.Spawn(ctx, append(strings.Fields("syslog -w 0 -T utc.3 -k Level Nle"),
 		syslogLevels[currLevel]),
 	)
 	if err != nil {
-		return gocore.Error("StartCommand(syslog)", err)
+		return gocore.Error("Spawn(syslog)", err)
 	}
 
-	go parseLog(ctx, sc, syslogRegex, "2006-01-02 15:04:05Z")
+	go parseLog(sc, syslogRegex, "2006-01-02 15:04:05Z")
 
 	return nil
 }

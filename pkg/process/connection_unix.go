@@ -116,10 +116,10 @@ const (
 // Endpoints starts the lsof command to capture process connections.
 func Endpoints(ctx context.Context) error {
 	gocore.Seteuid()
-	stdout, err := gocore.StartCommand(ctx, lsofCommand())
+	stdout, err := gocore.Spawn(ctx, lsofCommand())
 	gocore.Setuid()
 	if err != nil {
-		return gocore.Error("StartCommand(lsof)", err)
+		return gocore.Error("Spawn(lsof)", err)
 	}
 
 	go parseLsof(stdout)

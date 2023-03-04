@@ -10,7 +10,6 @@ import "C"
 
 import (
 	"bytes"
-	"fmt"
 	"unsafe"
 
 	"github.com/zosmac/gocore"
@@ -104,13 +103,13 @@ func (pid Pid) commandLine() CommandLine {
 func getPids() ([]Pid, error) {
 	n, err := C.proc_listpids(C.PROC_ALL_PIDS, 0, nil, 0)
 	if n <= 0 {
-		return nil, fmt.Errorf("proc_listpids PROC_ALL_PIDS failed %w", err)
+		return nil, gocore.Error("proc_listpids", err)
 	}
 
 	var pid C.int
 	buf := make([]C.int, n/C.int(unsafe.Sizeof(pid))+10)
 	if n, err = C.proc_listpids(C.PROC_ALL_PIDS, 0, unsafe.Pointer(&buf[0]), n); n <= 0 {
-		return nil, fmt.Errorf("proc_listpids PROC_ALL_PIDS failed %w", err)
+		return nil, gocore.Error("proc_listpids", err)
 	}
 	n /= C.int(unsafe.Sizeof(pid))
 	if int(n) < len(buf) {

@@ -19,7 +19,7 @@ import (
 func (ds *DataSource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
 	ds.Stream.Streams += 1
 	log.DefaultLogger.Info(
-		"RunStream()",
+		"RunStream",
 		"datasource", *ds,
 		"request", *req,
 	)
@@ -35,7 +35,7 @@ func (ds *DataSource) RunStream(ctx context.Context, req *backend.RunStreamReque
 		case <-time.After(time.Second * 10):
 			ds.Stream.Messages += 1
 			log.DefaultLogger.Info(
-				"RunStream()",
+				"RunStream",
 				"path", req.Path,
 				"streams", strconv.Itoa(ds.Stream.Streams),
 				"messages", strconv.Itoa(ds.Stream.Messages),
@@ -50,7 +50,7 @@ func (ds *DataSource) RunStream(ctx context.Context, req *backend.RunStreamReque
 			for _, frame := range resp.Frames {
 				if err := sender.SendFrame(frame, data.IncludeAll); err != nil {
 					log.DefaultLogger.Error(
-						"SendFrame()",
+						"SendFrame",
 						"frame", frame.Name,
 						"err", err,
 					)
@@ -66,7 +66,7 @@ func (ds *DataSource) RunStream(ctx context.Context, req *backend.RunStreamReque
 func (ds *DataSource) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
 	ds.Stream.Subscriptions += 1
 	log.DefaultLogger.Info(
-		"SubscribeStream()",
+		"SubscribeStream",
 		"subscriptions", strconv.Itoa(ds.Stream.Subscriptions),
 		"request", req,
 	)
@@ -85,7 +85,7 @@ func (ds *DataSource) SubscribeStream(_ context.Context, req *backend.SubscribeS
 func (ds *DataSource) PublishStream(_ context.Context, req *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
 	ds.Stream.Published += 1
 	log.DefaultLogger.Info(
-		"PublishStream()",
+		"PublishStream",
 		"published", strconv.Itoa(ds.Stream.Published),
 		"request", req,
 	)

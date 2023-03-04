@@ -99,7 +99,7 @@ type (
 func Factory(ctx context.Context) datasource.InstanceFactoryFunc {
 	return func(dsis backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 		log.DefaultLogger.Info(
-			"DataSourceInstanceFactory()",
+			"DataSourceInstanceFactory",
 			"settings", dsis,
 		)
 
@@ -109,7 +109,7 @@ func Factory(ctx context.Context) datasource.InstanceFactoryFunc {
 
 		if err := json.Unmarshal(dsis.JSONData, &instance.Settings); err != nil {
 			log.DefaultLogger.Error(
-				"Unmarshal()",
+				"Unmarshal",
 				"settings", dsis,
 				"err", err,
 			)
@@ -125,7 +125,7 @@ func Factory(ctx context.Context) datasource.InstanceFactoryFunc {
 // Dispose run when instance cleaned up.
 func (dsi *Instance) Dispose() {
 	log.DefaultLogger.Info(
-		"Dispose()",
+		"Dispose",
 		"datasource", *dsi,
 	)
 
@@ -150,7 +150,7 @@ func (ds *DataSource) CheckHealth(_ context.Context, req *backend.CheckHealthReq
 	}
 
 	log.DefaultLogger.Info(
-		"CheckHealth()",
+		"CheckHealth",
 		"datasource", *ds,
 		"request", *req,
 		"status", status,
@@ -168,7 +168,7 @@ func (ds *DataSource) CheckHealth(_ context.Context, req *backend.CheckHealthReq
 // CallResource of data source.
 func (ds *DataSource) CallResource(_ context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	log.DefaultLogger.Info(
-		"CallResource()",
+		"CallResource",
 		"datasource", *ds,
 		"request", *req,
 		"sender", sender,
