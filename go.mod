@@ -3,8 +3,8 @@ module github.com/zosmac/gomon-datasource
 go 1.20
 
 require (
-	github.com/grafana/grafana-plugin-sdk-go v0.153.0
-	github.com/zosmac/gocore v0.0.0-20230304015349-0a98a3036adc
+	github.com/grafana/grafana-plugin-sdk-go v0.156.0
+	github.com/zosmac/gocore v0.0.0-20230317153129-5654ba54c19e
 )
 
 require (
@@ -42,11 +42,11 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.40.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/tools v0.6.0 // indirect
+	golang.org/x/mod v0.9.0 // indirect
+	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/tools v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210630183607-d20f26d13c79 // indirect
 	google.golang.org/grpc v1.41.0 // indirect
