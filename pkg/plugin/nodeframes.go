@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
-func nodeFrames(link string, ns, es [][]interface{}) []*data.Frame {
+func nodeFrames(link string, ns, es [][]any) []*data.Frame {
 	nodes := data.NewFrameOfFieldTypes("nodes", len(ns),
 		data.FieldTypeTime,
 		data.FieldTypeInt64,

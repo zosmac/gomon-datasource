@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/grafana/grafana-plugin-sdk-go v0.156.0
-	github.com/zosmac/gocore v0.0.0-20230317153129-5654ba54c19e
+	github.com/zosmac/gocore v0.0.0-20230318144337-b5fc70d22566
 )
 
 require (

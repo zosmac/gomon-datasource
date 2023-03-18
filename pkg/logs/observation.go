@@ -61,7 +61,7 @@ func (l *Level) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func logFrames(link string, ms [][]interface{}) []*data.Frame {
+func logFrames(link string, ms [][]any) []*data.Frame {
 	logs := data.NewFrameOfFieldTypes("logs", len(ms),
 		data.FieldTypeTime,
 		data.FieldTypeString,

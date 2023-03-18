@@ -27,16 +27,16 @@ type (
 var (
 	// host/proc specify the arc for the circle drawn around a node.
 	// Each arc has a specific color set in its field metadata to create a circle that identifies the node type.
-	hostArc = []interface{}{1.0, 0.0, 0.0, 0.0, 0.0} // red
-	procArc = []interface{}{0.0, 1.0, 0.0, 0.0, 0.0} // blue
-	dataArc = []interface{}{0.0, 0.0, 1.0, 0.0, 0.0} // yellow
-	sockArc = []interface{}{0.0, 0.0, 0.0, 1.0, 0.0} // magenta
-	kernArc = []interface{}{0.0, 0.0, 0.0, 0.0, 1.0} // cyan
-	red     = map[string]interface{}{"mode": "fixed", "fixedColor": "red"}
-	blue    = map[string]interface{}{"mode": "fixed", "fixedColor": "blue"}
-	yellow  = map[string]interface{}{"mode": "fixed", "fixedColor": "yellow"}
-	magenta = map[string]interface{}{"mode": "fixed", "fixedColor": "magenta"}
-	cyan    = map[string]interface{}{"mode": "fixed", "fixedColor": "cyan"}
+	hostArc = []any{1.0, 0.0, 0.0, 0.0, 0.0} // red
+	procArc = []any{0.0, 1.0, 0.0, 0.0, 0.0} // blue
+	dataArc = []any{0.0, 0.0, 1.0, 0.0, 0.0} // yellow
+	sockArc = []any{0.0, 0.0, 0.0, 1.0, 0.0} // magenta
+	kernArc = []any{0.0, 0.0, 0.0, 0.0, 1.0} // cyan
+	red     = map[string]any{"mode": "fixed", "fixedColor": "red"}
+	blue    = map[string]any{"mode": "fixed", "fixedColor": "blue"}
+	yellow  = map[string]any{"mode": "fixed", "fixedColor": "yellow"}
+	magenta = map[string]any{"mode": "fixed", "fixedColor": "magenta"}
+	cyan    = map[string]any{"mode": "fixed", "fixedColor": "cyan"}
 )
 
 // NodeGraph produces the process connections node graph.
@@ -88,8 +88,8 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 		}
 	}
 
-	nm := map[Pid][]interface{}{}
-	em := map[string][]interface{}{}
+	nm := map[Pid][]any{}
+	em := map[string][]any{}
 	timestamp := time.Now()
 
 	for _, p := range ft {
@@ -101,7 +101,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 				continue
 			}
 
-			nm[conn.Self.Pid] = append([]interface{}{
+			nm[conn.Self.Pid] = append([]any{
 				timestamp,
 				int64(conn.Self.Pid),
 				pt[conn.Self.Pid].Id.Name,
@@ -119,7 +119,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 					arc = sockArc
 				}
 
-				nm[conn.Peer.Pid] = append([]interface{}{
+				nm[conn.Peer.Pid] = append([]any{
 					timestamp,
 					int64(conn.Peer.Pid),
 					conn.Type + ":" + port,
@@ -130,7 +130,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 
 				// flip the source and target to get Host shown to left in node graph
 				id := fmt.Sprintf("%d -> %d", conn.Peer.Pid, conn.Self.Pid)
-				em[id] = []interface{}{
+				em[id] = []any{
 					timestamp,
 					id,
 					int64(conn.Peer.Pid),
@@ -152,7 +152,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 					arc = kernArc
 				}
 
-				nm[conn.Peer.Pid] = append([]interface{}{
+				nm[conn.Peer.Pid] = append([]any{
 					timestamp,
 					int64(conn.Peer.Pid),
 					conn.Type,
@@ -164,7 +164,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 				// show edge for data connections only once
 				id := fmt.Sprintf("%d -> %d", conn.Self.Pid, conn.Peer.Pid)
 				if _, ok := em[id]; !ok {
-					em[id] = []interface{}{
+					em[id] = []any{
 						timestamp,
 						id,
 						int64(conn.Self.Pid),
@@ -181,7 +181,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 				}
 			} else { // peer is process
 				peer := shortname(pt, conn.Peer.Pid)
-				nm[conn.Peer.Pid] = append([]interface{}{
+				nm[conn.Peer.Pid] = append([]any{
 					timestamp,
 					int64(conn.Peer.Pid),
 					pt[conn.Peer.Pid].Id.Name,
@@ -210,7 +210,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 						conn.Self.Name,
 					)
 				} else {
-					em[id] = []interface{}{
+					em[id] = []any{
 						timestamp,
 						id,
 						int64(conn.Self.Pid),
@@ -231,7 +231,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 		}
 	}
 
-	ns := make([][]interface{}, len(nm))
+	ns := make([][]any, len(nm))
 	i := 0
 	for _, n := range nm {
 		ns[i] = n
@@ -242,7 +242,7 @@ func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
 		return ns[i][1].(int64) < ns[j][1].(int64)
 	})
 
-	es := make([][]interface{}, len(em))
+	es := make([][]any, len(em))
 	i = 0
 	for _, e := range em {
 		es[i] = e

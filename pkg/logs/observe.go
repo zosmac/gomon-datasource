@@ -42,10 +42,10 @@ var (
 	requestChan = make(chan struct{})
 
 	// messagesChan posts the queued messages when requested.
-	messagesChan = make(chan [][]interface{})
+	messagesChan = make(chan [][]any)
 
 	// messageChan queues log messages to convey to Grafana.
-	messageChan = make(chan []interface{}, 100)
+	messageChan = make(chan []any, 100)
 
 	// levelMap maps various applications' log levels to a common set fatal/error/warn/info/debug/trace.
 	levelMap = map[string]Level{
@@ -104,7 +104,7 @@ func Observer(ctx context.Context, level Level) error {
 	}
 
 	go func() {
-		var messages [][]interface{}
+		var messages [][]any
 		for {
 			select {
 			case <-chld.Done():
@@ -164,7 +164,7 @@ func queue(groups map[string]int, format string, match []string) {
 		sender = match[cg] + ":" + sender
 	}
 
-	messageChan <- []interface{}{
+	messageChan <- []any{
 		t,
 		match[groups[groupMessage]],
 		string(levelMap[strings.ToLower(match[groups[groupLevel]])]),
