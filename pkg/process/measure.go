@@ -4,7 +4,6 @@ package process
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 
 	"github.com/zosmac/gocore"
@@ -12,14 +11,14 @@ import (
 
 type (
 	// Table defines a process table as a map of pids to processes.
-	Table map[Pid]*Process
+	Table = gocore.Table[Pid, *Process]
 
 	// Tree organizes the processes into a hierarchy.
-	Tree map[Pid]Tree
+	Tree = gocore.Tree[Pid, int, *Process]
 )
 
 var (
-	// clMap caches process command lines, which are expensive to query.
+	// clMap caches process command lines, which can be expensive to query.
 	clMap  = map[Pid]CommandLine{}
 	clLock sync.Mutex
 
@@ -31,7 +30,7 @@ var (
 	epLock sync.RWMutex
 )
 
-// BuildTable builds a process table and captures current process state
+// BuildTable builds a process table and captures current process state.
 func BuildTable() Table {
 	gocore.Seteuid()
 	defer gocore.Setuid()
@@ -68,82 +67,15 @@ func BuildTable() Table {
 	return pt
 }
 
-func BuildTree(pt Table) Tree {
+// BuildTree builds the process tree.
+func BuildTree(tb Table) Tree {
 	tr := Tree{}
-
-	for pid, p := range pt {
-		var ancestors []Pid
-		for pid := p.Ppid; pid > 1; pid = pt[pid].Ppid {
-			ancestors = append([]Pid{pid}, ancestors...)
+	for pid := range tb {
+		var pids []Pid
+		for ; pid > 0; pid = tb[pid].Ppid {
+			pids = append([]Pid{pid}, pids...)
 		}
-		addPid(tr, append(ancestors, pid))
+		tr.Add(pids...)
 	}
-
 	return tr
-}
-
-func addPid(tr Tree, ancestors []Pid) {
-	if len(ancestors) == 0 {
-		return
-	}
-	if _, ok := tr[ancestors[0]]; !ok {
-		tr[ancestors[0]] = Tree{}
-	}
-	addPid(tr[ancestors[0]], ancestors[1:])
-}
-
-func FlatTree(tr Tree) []Pid {
-	return flatTree(tr, 0)
-}
-
-func flatTree(tr Tree, indent int) []Pid {
-	if len(tr) == 0 {
-		return nil
-	}
-	var flat []Pid
-
-	var pids []Pid
-	for pid := range tr {
-		pids = append(pids, pid)
-	}
-
-	sort.Slice(pids, func(i, j int) bool {
-		dti := depthTree(tr[pids[i]])
-		dtj := depthTree(tr[pids[j]])
-		return dti > dtj ||
-			dti == dtj && pids[i] < pids[j]
-	})
-
-	for _, pid := range pids {
-		flat = append(flat, pid)
-		flat = append(flat, flatTree(tr[pid], indent+3)...)
-	}
-
-	return flat
-}
-
-// depthTree enables sort of deepest process trees first.
-func depthTree(tr Tree) int {
-	depth := 0
-	for _, tr := range tr {
-		dt := depthTree(tr) + 1
-		if depth < dt {
-			depth = dt
-		}
-	}
-	return depth
-}
-
-// FindTree finds the process tree parented by a specific process.
-func FindTree(tr Tree, parent Pid) Tree {
-	for pid, tr := range tr {
-		if pid == parent {
-			return Tree{parent: tr}
-		}
-		if tr = FindTree(tr, parent); tr != nil {
-			return tr
-		}
-	}
-
-	return nil
 }

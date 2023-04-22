@@ -19,6 +19,7 @@ type (
 	}
 )
 
+// String formats a pid as a string to comply with fmt.Stringer interface.
 func (pid Pid) String() string {
 	return strconv.Itoa(int(pid))
 }

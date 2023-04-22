@@ -10,7 +10,7 @@ type (
 		Envs       []string `json:"envs" gomon:"property"`
 	}
 
-	// Properties defines process properties.
+	// Properties defines measurement properties.
 	Properties struct {
 		Ppid        Pid    `json:"ppid" gomon:"property"`
 		Pgid        int    `json:"pgid,omitempty" gomon:"property,,!windows"`
