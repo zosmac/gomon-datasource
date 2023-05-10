@@ -13,10 +13,9 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 
 	"github.com/zosmac/gocore"
-	"github.com/zosmac/gomon-datasource/pkg/process"
+	"github.com/zosmac/gomon/process"
 )
 
 type (
@@ -39,30 +38,28 @@ var (
 	cyan    = map[string]any{"mode": "fixed", "fixedColor": "cyan"}
 )
 
-// NodeGraph produces the process connections node graph.
-func NodeGraph(link string, pid Pid) (resp backend.DataResponse) {
+// Nodegraph produces the process connections node graph.
+func Nodegraph(link string, pid Pid) (resp backend.DataResponse) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.DefaultLogger.Error(
-				"NodeGraph() Panic",
-				"panic", r,
-				"stacktrace", string(buf),
-			)
+			gocore.Error("nodegraph panic", nil, map[string]string{
+				"panic":      fmt.Sprint(r),
+				"stacktrace": string(buf),
+			}).Err()
 			if e, ok := r.(error); ok {
 				resp.Error = e
 			} else {
-				resp.Error = fmt.Errorf("panic in NodeGraph: %v", r)
+				resp.Error = fmt.Errorf("nodegraph panic: %v", r)
 			}
 		}
 	}()
 
-	log.DefaultLogger.Info(
-		"NodeGraph",
-		"pid", pid.String(),
-	)
+	gocore.Error("nodegraph", nil, map[string]string{
+		"pid": pid.String(),
+	}).Info()
 
 	tb := process.BuildTable()
 	tr := process.BuildTree(tb)

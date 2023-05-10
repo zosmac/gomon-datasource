@@ -9,52 +9,48 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/zosmac/gocore"
 )
 
 // TODO: flesh this out so it actually works. So far, this is just placeholder code.
 
 // RunStream initiates data source's stream to channel.
-func (ds *DataSource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
-	ds.Stream.Streams += 1
-	log.DefaultLogger.Info(
-		"RunStream",
-		"datasource", *ds,
-		"request", *req,
-	)
+func (dsi *Instance) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
+	dsi.Stream.Streams += 1
+	gocore.Error("RunStream", nil, map[string]string{
+		"instance": fmt.Sprint(*dsi),
+		"request":  fmt.Sprint(*req),
+	}).Info()
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.DefaultLogger.Info(
-				"RunStream Cancelled",
-				"path", req.Path,
-			)
+			gocore.Error("RunStream Cancelled", nil, map[string]string{
+				"path": req.Path,
+			}).Err()
 			return nil
 		case <-time.After(time.Second * 10):
-			ds.Stream.Messages += 1
-			log.DefaultLogger.Info(
-				"RunStream",
-				"path", req.Path,
-				"streams", strconv.Itoa(ds.Stream.Streams),
-				"messages", strconv.Itoa(ds.Stream.Messages),
-				"request", *req,
-			)
+			dsi.Stream.Messages += 1
+			gocore.Error("RunStream", nil, map[string]string{
+				"path":     req.Path,
+				"streams":  strconv.Itoa(dsi.Stream.Streams),
+				"messages": strconv.Itoa(dsi.Stream.Messages),
+				"request":  fmt.Sprint(*req),
+			}).Info()
 
 			link := fmt.Sprintf(`http://localhost:3000/explore?orgId=${__org}&left=["now-5m","now","%s",{"node":"${__value.raw}"}]`,
 				req.PluginContext.DataSourceInstanceSettings.Name,
 			)
 
-			resp := NodeGraph(link, 0)
+			resp := Nodegraph(link, 0)
 			for _, frame := range resp.Frames {
 				if err := sender.SendFrame(frame, data.IncludeAll); err != nil {
-					log.DefaultLogger.Error(
-						"SendFrame",
-						"frame", frame.Name,
-						"err", err,
-					)
-					ds.Stream.Errors += 1
+					gocore.Error("SendFrame", nil, map[string]string{
+						"frame": frame.Name,
+						"err":   err.Error(),
+					}).Err()
+					dsi.Stream.Errors += 1
 					break
 				}
 			}
@@ -63,13 +59,12 @@ func (ds *DataSource) RunStream(ctx context.Context, req *backend.RunStreamReque
 }
 
 // SubscribeStream connects client to stream.
-func (ds *DataSource) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
-	ds.Stream.Subscriptions += 1
-	log.DefaultLogger.Info(
-		"SubscribeStream",
-		"subscriptions", strconv.Itoa(ds.Stream.Subscriptions),
-		"request", req,
-	)
+func (dsi *Instance) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
+	dsi.Stream.Subscriptions += 1
+	gocore.Error("SubscribeStream", nil, map[string]string{
+		"subscriptions": strconv.Itoa(dsi.Stream.Subscriptions),
+		"request":       fmt.Sprint(*req),
+	}).Info()
 
 	status := backend.SubscribeStreamStatusPermissionDenied
 	if req.Path == "stream" {
@@ -82,13 +77,12 @@ func (ds *DataSource) SubscribeStream(_ context.Context, req *backend.SubscribeS
 }
 
 // PublishStream sends client message to the stream.
-func (ds *DataSource) PublishStream(_ context.Context, req *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
-	ds.Stream.Published += 1
-	log.DefaultLogger.Info(
-		"PublishStream",
-		"published", strconv.Itoa(ds.Stream.Published),
-		"request", req,
-	)
+func (dsi *Instance) PublishStream(_ context.Context, req *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
+	dsi.Stream.Published += 1
+	gocore.Error("PublishStream", nil, map[string]string{
+		"published": strconv.Itoa(dsi.Stream.Published),
+		"request":   fmt.Sprint(*req),
+	}).Info()
 
 	// Do not allow publishing at all.
 	return &backend.PublishStreamResponse{

@@ -1,20 +1,19 @@
 import { defaults } from 'lodash';
 import React from 'react';
-import { QueryEditorProps, SelectableValue } from '@grafana/data';
-import { Select, InlineField, Label } from '@grafana/ui';
+import { QueryEditorProps } from '@grafana/data';
+import { Button, InlineField, Label } from '@grafana/ui';
 
 import { DataSource } from './DataSource';
-import { graphs, MyQuery, MyDataSourceOptions, defaultQuery, maxInt32 } from './types';
+import { MyQuery, MyDataSourceOptions, defaultQuery, graphProcesses, maxInt32 } from './types';
 
 interface Props extends QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions> {}
 
 export function QueryEditor(props: Props) {
   const { query, onChange, onRunQuery } = defaults(props, defaultQuery);
-
-  const onSelectGraph = (graph: SelectableValue<string>) => {
+  const onClickGraph = () => {
     onChange({
       ...query,
-      graph: graph,
+      graph: graphProcesses,
       pid: 0,
     });
 
@@ -23,17 +22,16 @@ export function QueryEditor(props: Props) {
 
   return (
     <div className="gf-form-inline">
-      <InlineField 
-        label="Graph:"
+      <InlineField
+        label="NodeGraph:"
         className="gf-form-label width-14"
       >
-        <Select
-          className="gf-form-label width-10"
-          placeholder={"Choose Graph"}
-          options={graphs}
-          value={query.graph}
-          onChange={onSelectGraph}
-        />
+        <Button
+          className="gf-form-button"
+          onClick={onClickGraph}
+          >
+          {graphProcesses}
+        </Button>
       </InlineField>
       <div className="gf-form" hidden={(query.pid == null || query.pid <= 0 || query.pid >= maxInt32)}>
         <Label className="gf-form-label width-10">
