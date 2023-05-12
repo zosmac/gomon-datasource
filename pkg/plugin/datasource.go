@@ -15,8 +15,6 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/zosmac/gocore"
-	"github.com/zosmac/gomon/logs"
-	"github.com/zosmac/gomon/message"
 	"github.com/zosmac/gomon/process"
 )
 
@@ -47,30 +45,6 @@ var (
 
 func Factory(ctx context.Context) datasource.InstanceFactoryFunc {
 	gocore.Error("DataSourceInstanceFactory", nil).Info()
-
-	if err := message.Encoder(ctx); err != nil {
-		gocore.Error("encoder", err).Err()
-		return nil
-	}
-
-	logs.Flags.LogEvent = logs.LevelTrace
-	if err := logs.Observer(ctx); err != nil {
-		gocore.Error("logs Observer", err).Err()
-		return nil
-	}
-
-	if err := process.Observer(ctx); err != nil {
-		gocore.Error("processes Observer", err).Err()
-		return nil
-	}
-
-	<-time.After(time.Second) // await root processes startup
-	gocore.Setuid()           // set to grafana user so Serve() opens grpc unix socket accessibly
-
-	go func() {
-		<-time.After(time.Second)
-		gocore.Seteuid() // after Serve() restore root access to OS services
-	}()
 
 	return func(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 		gocore.Error("create datasource instance", nil, map[string]string{

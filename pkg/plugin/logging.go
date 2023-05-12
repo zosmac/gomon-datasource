@@ -7,7 +7,6 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/zosmac/gocore"
-	"github.com/zosmac/gomon/logs"
 )
 
 func init() {
@@ -29,7 +28,10 @@ func init() {
 	}()
 
 	gocore.Log = func(msg gocore.LogMessage, level gocore.LogLevel) {
-		if level >= logs.EventMap[logs.Flags.LogEvent] {
+		if level >= gocore.LoggingLevel {
+			if msg.E == nil && level > gocore.LevelInfo {
+				level = gocore.LevelInfo
+			}
 			switch level {
 			case gocore.LevelTrace,
 				gocore.LevelDebug:
