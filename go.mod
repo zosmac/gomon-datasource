@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/grafana/grafana-plugin-sdk-go v0.161.0
 	github.com/zosmac/gocore v0.0.0-20230512022451-62890258afc3
-	github.com/zosmac/gomon v0.0.0-20230512023502-2ff9ebf00ee4
+	github.com/zosmac/gomon v0.0.0-20230520023858-5406536467b2
 )
 
 require (
@@ -66,4 +66,5 @@ require (
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.54.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

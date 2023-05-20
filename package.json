@@ -1,7 +1,7 @@
 {
   "name": "zosmac-gomon-datasource",
   "version": "1.0.0",
-  "description": "Gomon process node graph data source",
+  "description": "Gomon system monitor and process node graph data source",
   "scripts": {
     "build": "grafana-toolkit plugin:build",
     "test": "grafana-toolkit plugin:test",
@@ -13,19 +13,22 @@
   "author": "zosmac@github.com",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@grafana/data": "9.1.6",
-    "@grafana/runtime": "9.1.6",
-    "@grafana/toolkit": "9.1.6",
-    "@grafana/ui": "9.1.6",
-    "@types/lodash": "4.14.186"
+    "@grafana/toolkit": "latest",
+    "@types/lodash": "latest"
+  },
+  "dependencies": {
+    "@grafana/data": "latest",
+    "@grafana/runtime": "latest",
+    "@grafana/ui": "latest",
+    "eslint-plugin-jsdoc": "^44.2.4",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "rxjs": "7.8.1"
   },
   "resolutions": {
-    "rxjs": "7.3.0"
+    "rxjs": "7.5.6"
   },
   "engines": {
     "node": ">=14"
-  },
-  "dependencies": {
-    "rxjs": "7.5.7"
   }
 }

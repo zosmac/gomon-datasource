@@ -47,10 +47,10 @@ var (
 	confDir = filepath.Join(grafanaDir, "conf")
 
 	pluginDir = func() string {
-		if dir, ok := os.LookupEnv("GRAFANA_PLUGIN_DIR"); ok {
+		if dir, ok := os.LookupEnv("PLUGINS_DIR"); ok {
 			return dir
 		}
-		return filepath.Join("..", plugin)
+		return filepath.Join("..", "plugins")
 	}()
 
 	credential = func() string {
@@ -84,6 +84,11 @@ func Upgrade() error {
 // Frontend builds the web frontend of the data source.
 func Frontend() error {
 	if err := command("yarn", "", "build"); err != nil {
+		return err
+	}
+
+	// copy assets including images for README.md
+	if err := command("cp", "", "-R", "assets", "dist/"); err != nil {
 		return err
 	}
 
