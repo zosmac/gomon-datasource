@@ -167,8 +167,8 @@ github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm4
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
 github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
-github.com/grafana/grafana-plugin-sdk-go v0.161.0 h1:UjVjRGQ5cuT4Ok30qUeLW2OhQhx9Whuz9Oz/1KsBvVM=
-github.com/grafana/grafana-plugin-sdk-go v0.161.0/go.mod h1:dPhljkVno3Bg/ZYafMrR/BfYjtCRJD2hU2719Nl3QzM=
+github.com/grafana/grafana-plugin-sdk-go v0.168.0 h1:aN08Wcmf5IGmlhJTepp02auCoUNwJ+kPsLuaEBbnzWg=
+github.com/grafana/grafana-plugin-sdk-go v0.168.0/go.mod h1:MAt835E65I7ezYpgn6yUq5BhK7ozPVlX94UjtQN9Rvo=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 h1:UH//fgunKIs4JdUbpDl1VZCDaL56wXCB/5+wF6uHfaI=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0/go.mod h1:g5qyo/la0ALbONm6Vbp88Yd8NsDy6rZz+RcrMPxvld8=
 github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 h1:Ovs26xHkKqVztRpIrF/92BcuyuQ/YW4NSIpoGtfXNho=
@@ -267,10 +267,10 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
-github.com/zosmac/gocore v0.0.0-20230512022451-62890258afc3 h1:a6tZlUj7VyK/6udRtpU5wZay1cUraNtazkPSncarTrg=
-github.com/zosmac/gocore v0.0.0-20230512022451-62890258afc3/go.mod h1:cgnb2zvY9n+4qWTV5zj0SKE48Oc/6TYe+hU8IoEwm30=
-github.com/zosmac/gomon v0.0.0-20230520023858-5406536467b2 h1:2q3bSkm2tfGmifbrC74VsOU+Cpo/BHSO4dfOixujcmU=
-github.com/zosmac/gomon v0.0.0-20230520023858-5406536467b2/go.mod h1:+iStHo3IuxdAF0kAJrJ5a6v7v8yE6BSmg+zSODET63U=
+github.com/zosmac/gocore v0.0.0-20230711113138-97b1228d13e2 h1:YOITLVn2i+EdxdBMzws/ec/9GYOveW8Oa0fcF1yiDMM=
+github.com/zosmac/gocore v0.0.0-20230711113138-97b1228d13e2/go.mod h1:cgnb2zvY9n+4qWTV5zj0SKE48Oc/6TYe+hU8IoEwm30=
+github.com/zosmac/gomon v0.0.0-20230711112834-58ce86b980ee h1:L9YghQfRTThF6FUWUU5xOAqgXn8A8qE2gfvmOD8GY6o=
+github.com/zosmac/gomon v0.0.0-20230711112834-58ce86b980ee/go.mod h1:+iStHo3IuxdAF0kAJrJ5a6v7v8yE6BSmg+zSODET63U=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=

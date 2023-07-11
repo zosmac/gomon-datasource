@@ -3,10 +3,13 @@
 package plugin
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
-func nodeFrames(link string, ns, es [][]any) []*data.Frame {
+func nodeFrames(link string, ns, es [][]any, maxConnections int) []*data.Frame {
 	nodes := data.NewFrameOfFieldTypes("nodes", len(ns),
 		data.FieldTypeTime,
 		data.FieldTypeInt64,
@@ -57,12 +60,12 @@ func nodeFrames(link string, ns, es [][]any) []*data.Frame {
 		}},
 	}
 	nodes.Fields[2].Config = &data.FieldConfig{
-		DisplayName: " ",
-		Path:        "command",
+		DisplayName: "Service",
+		Path:        "service",
 	}
 	nodes.Fields[3].Config = &data.FieldConfig{
-		DisplayName: " ",
-		Path:        "process",
+		DisplayName: "Instance",
+		Path:        "instance",
 	}
 	nodes.Fields[4].Config = &data.FieldConfig{
 		DisplayName: "Name",
@@ -102,24 +105,30 @@ func nodeFrames(link string, ns, es [][]any) []*data.Frame {
 		nodes.SetRow(i, n...)
 	}
 
-	edges := data.NewFrameOfFieldTypes("edges", len(es),
+	flds := []data.FieldType{
 		data.FieldTypeTime,
 		data.FieldTypeString,
 		data.FieldTypeInt64,
 		data.FieldTypeInt64,
 		data.FieldTypeString,
 		data.FieldTypeString,
-		data.FieldTypeString,
-	)
-	edges.SetFieldNames(
+	}
+	names := []string{
 		"time",
 		"id",
 		"source",
 		"target",
 		"mainStat",
 		"secondaryStat",
-		"detail__edges",
-	)
+	}
+	for i := 0; i < maxConnections; i++ {
+		flds = append(flds, data.FieldTypeString)
+		names = append(names, "detail__connection_"+strconv.Itoa(i))
+	}
+
+	edges := data.NewFrameOfFieldTypes("edges", len(es), flds...)
+	edges.SetFieldNames(names...)
+
 	edges.SetMeta(&data.FrameMeta{
 		Path:                   "edge",
 		PreferredVisualization: data.VisType("nodeGraph"),
@@ -163,9 +172,12 @@ func nodeFrames(link string, ns, es [][]any) []*data.Frame {
 		DisplayName: "Target",
 		Path:        "peer",
 	}
-	edges.Fields[6].Config = &data.FieldConfig{
-		DisplayName: "Relations",
-		Path:        "relations",
+
+	for i := 0; i < maxConnections; i++ {
+		edges.Fields[i+6].Config = &data.FieldConfig{
+			DisplayName: fmt.Sprintf("Connection %d", i+1),
+			Path:        fmt.Sprintf("connection %d", i+1),
+		}
 	}
 
 	for i, e := range es {

@@ -3,9 +3,9 @@ module github.com/zosmac/gomon-datasource
 go 1.20
 
 require (
-	github.com/grafana/grafana-plugin-sdk-go v0.161.0
-	github.com/zosmac/gocore v0.0.0-20230512022451-62890258afc3
-	github.com/zosmac/gomon v0.0.0-20230520023858-5406536467b2
+	github.com/grafana/grafana-plugin-sdk-go v0.168.0
+	github.com/zosmac/gocore v0.0.0-20230711113138-97b1228d13e2
+	github.com/zosmac/gomon v0.0.0-20230711112834-58ce86b980ee
 )
 
 require (
