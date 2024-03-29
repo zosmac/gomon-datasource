@@ -46,7 +46,7 @@ var (
 func Factory(ctx context.Context) datasource.InstanceFactoryFunc {
 	gocore.Error("DataSourceInstanceFactory", nil).Info()
 
-	return func(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+	return func(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 		gocore.Error("create datasource instance", nil, map[string]string{
 			"id":       strconv.Itoa(int(settings.ID)),
 			"uid":      settings.UID,
