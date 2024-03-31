@@ -17,6 +17,14 @@ var (
 	// Default target to run when none is specified
 	Default = Backend
 
+	devDir = func() string {
+		dir := filepath.Join(os.Getenv("HOME"), "Developer")
+		if stat, err := os.Stat(dir); err == nil && stat.IsDir() {
+			return dir
+		}
+		return os.Getenv("HOME")
+	}()
+
 	plugin = "gomon-datasource"
 
 	goos = func() string {
@@ -41,16 +49,24 @@ var (
 		if dir, ok := os.LookupEnv("GRAFANA_DIR"); ok {
 			return dir
 		}
-		return filepath.Join("..", "..", "grafana")
+
+		if glob, err := filepath.Glob(filepath.Join(devDir, "grafana-v*")); err == nil {
+			if len(glob) == 1 {
+				return glob[0]
+				// else do some semantic version sorting
+			}
+		}
+
+		return filepath.Join("..", "grafana")
 	}()
 
 	confDir = filepath.Join(grafanaDir, "conf")
 
 	pluginDir = func() string {
-		if dir, ok := os.LookupEnv("PLUGINS_DIR"); ok {
+		if dir, ok := os.LookupEnv("PLUGIN_DIR"); ok {
 			return dir
 		}
-		return filepath.Join("..", "plugins")
+		return filepath.Join(devDir, "plugins", "zosmac-gomon-datasource")
 	}()
 
 	credential = func() string {
@@ -70,11 +86,11 @@ var (
 
 // Upgrade refreshes dependencies.
 func Upgrade() error {
-	if err := command("yarn", "", "install", "--fix", "--latest", "--force"); err != nil {
+	if err := command("npm", "", "update", "--save"); err != nil {
 		return err
 	}
 
-	if err := command("yarn", "", "upgrade", "--fix", "--latest", "--force"); err != nil {
+	if err := command("npm", "", "install"); err != nil {
 		return err
 	}
 
@@ -83,7 +99,7 @@ func Upgrade() error {
 
 // Frontend builds the web frontend of the data source.
 func Frontend() error {
-	if err := command("yarn", "", "build"); err != nil {
+	if err := command("npm", "", "run", "build"); err != nil {
 		return err
 	}
 
@@ -123,7 +139,16 @@ func BuildAll() error {
 
 // Install installs the data source plugin.
 func Install() error {
+	// what if custom.ini exists?
 	if err := command("cp", "", "./assets/custom.ini", confDir); err != nil {
+		return err
+	}
+
+	if err := command("rm", "", "-rf", pluginDir); err != nil {
+		return err
+	}
+
+	if err := command("cp", "", "-R", "./dist", pluginDir); err != nil {
 		return err
 	}
 
@@ -131,16 +156,6 @@ func Install() error {
 		credential,
 		"-X", "DELETE",
 		"http://localhost:3000/api/datasources/name/gomon-datasource",
-	); err != nil {
-		return err
-	}
-
-	if err := command("curl",
-		credential,
-		"-X", "POST",
-		"-H", "Content-Type: application/json",
-		"-T", "./assets/datasource.json",
-		"http://localhost:3000/api/datasources",
 	); err != nil {
 		return err
 	}
