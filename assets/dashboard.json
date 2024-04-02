@@ -28,14 +28,14 @@
       "editable" : true,
       "fiscalYearStartMonth" : 0,
       "graphTooltip" : 1,
-      "id" : null,
+      "id" : 1,
       "links" : [],
       "liveNow" : false,
       "panels" : [
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "description" : "",
             "fieldConfig" : {
@@ -87,13 +87,15 @@
                   "fields" : "",
                   "values" : false
                },
+               "showPercentChange" : false,
                "text" : {
                   "titleSize" : 14,
                   "valueSize" : 14
                },
-               "textMode" : "value_and_name"
+               "textMode" : "value_and_name",
+               "wideLayout" : true
             },
-            "pluginVersion" : "9.5.3",
+            "pluginVersion" : "10.4.1",
             "targets" : [
                {
                   "datasource" : {
@@ -102,7 +104,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "(time()-gomon_system_uptime_seconds)*1000",
+                  "expr" : "(time()-gomon_system_uptime_seconds{})*1000",
                   "format" : "time_series",
                   "instant" : true,
                   "interval" : "",
@@ -117,7 +119,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "gomon_system_uptime_seconds",
+                  "expr" : "gomon_system_uptime_seconds{}",
                   "hide" : false,
                   "instant" : true,
                   "legendFormat" : "Uptime",
@@ -132,7 +134,7 @@
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "description" : "",
             "fieldConfig" : {
@@ -214,13 +216,15 @@
                   "fields" : "",
                   "values" : false
                },
+               "showPercentChange" : false,
                "text" : {
                   "titleSize" : 14,
                   "valueSize" : 14
                },
-               "textMode" : "value_and_name"
+               "textMode" : "value_and_name",
+               "wideLayout" : true
             },
-            "pluginVersion" : "9.5.3",
+            "pluginVersion" : "10.4.1",
             "targets" : [
                {
                   "datasource" : {
@@ -229,7 +233,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "gomon_system_memory_total_bytes",
+                  "expr" : "gomon_system_memory_total_bytes{}",
                   "format" : "time_series",
                   "hide" : false,
                   "instant" : true,
@@ -245,7 +249,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "gomon_system_memory_used_actual_bytes",
+                  "expr" : "gomon_system_memory_used_actual_bytes{}",
                   "instant" : true,
                   "interval" : "",
                   "legendFormat" : "Used",
@@ -259,7 +263,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "gomon_system_memory_used_actual_bytes/gomon_system_memory_total_bytes",
+                  "expr" : "gomon_system_memory_used_actual_bytes{}/gomon_system_memory_total_bytes{}",
                   "format" : "time_series",
                   "hide" : false,
                   "instant" : true,
@@ -275,7 +279,7 @@
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "description" : "",
             "fieldConfig" : {
@@ -357,13 +361,15 @@
                   "fields" : "",
                   "values" : false
                },
+               "showPercentChange" : false,
                "text" : {
                   "titleSize" : 14,
                   "valueSize" : 14
                },
-               "textMode" : "value_and_name"
+               "textMode" : "value_and_name",
+               "wideLayout" : true
             },
-            "pluginVersion" : "9.5.3",
+            "pluginVersion" : "10.4.1",
             "targets" : [
                {
                   "datasource" : {
@@ -372,7 +378,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "gomon_system_cpu_count",
+                  "expr" : "gomon_system_cpu_count{}",
                   "instant" : true,
                   "interval" : "",
                   "legendFormat" : "Count",
@@ -386,7 +392,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "(rate(gomon_system_cpu_system_seconds[$__rate_interval])+rate(gomon_system_cpu_user_seconds[$__rate_interval]))/rate(gomon_system_cpu_total_seconds[$__rate_interval])",
+                  "expr" : "(rate(gomon_system_cpu_system_seconds{}[$__rate_interval])+rate(gomon_system_cpu_user_seconds{}[$__rate_interval]))/rate(gomon_system_cpu_total_seconds{}[$__rate_interval])",
                   "hide" : false,
                   "instant" : true,
                   "interval" : "",
@@ -402,7 +408,7 @@
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "fieldConfig" : {
                "defaults" : {
@@ -410,6 +416,7 @@
                      "mode" : "palette-classic"
                   },
                   "custom" : {
+                     "axisBorderShow" : false,
                      "axisCenteredZero" : false,
                      "axisColorMode" : "series",
                      "axisLabel" : "",
@@ -424,6 +431,7 @@
                         "tooltip" : false,
                         "viz" : false
                      },
+                     "insertNulls" : false,
                      "lineInterpolation" : "linear",
                      "lineWidth" : 1,
                      "pointSize" : 3,
@@ -482,10 +490,12 @@
                      "type" : "prometheus",
                      "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
                   },
+                  "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "gomon_system_load_average_one_minute",
+                  "expr" : "gomon_system_load_average_one_minute{}",
                   "interval" : "",
                   "legendFormat" : "load average 1",
+                  "range" : true,
                   "refId" : "A"
                },
                {
@@ -493,10 +503,12 @@
                      "type" : "prometheus",
                      "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
                   },
+                  "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "gomon_system_load_average_five_minute",
+                  "expr" : "gomon_system_load_average_five_minute{}",
                   "interval" : "",
                   "legendFormat" : "load average 5",
+                  "range" : true,
                   "refId" : "B"
                },
                {
@@ -504,10 +516,12 @@
                      "type" : "prometheus",
                      "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
                   },
+                  "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "gomon_system_load_average_fifteen_minute",
+                  "expr" : "gomon_system_load_average_fifteen_minute{}",
                   "interval" : "",
                   "legendFormat" : "load average 15",
+                  "range" : true,
                   "refId" : "C"
                }
             ],
@@ -518,7 +532,7 @@
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "fieldConfig" : {
                "defaults" : {
@@ -526,6 +540,7 @@
                      "mode" : "palette-classic"
                   },
                   "custom" : {
+                     "axisBorderShow" : false,
                      "axisCenteredZero" : false,
                      "axisColorMode" : "series",
                      "axisLabel" : "",
@@ -539,6 +554,7 @@
                         "tooltip" : false,
                         "viz" : false
                      },
+                     "insertNulls" : false,
                      "lineInterpolation" : "linear",
                      "lineWidth" : 1,
                      "pointSize" : 3,
@@ -616,7 +632,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "rate(gomon_serve_collections[$__rate_interval])",
+                  "expr" : "rate(gomon_serve_collections{}[$__rate_interval])",
                   "instant" : false,
                   "key" : "Q-b42f8d77-3dd8-49c0-90c1-d1da26dfe2bb-0",
                   "legendFormat" : "{{id}} collections",
@@ -630,7 +646,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "rate(gomon_serve_collection_time_seconds[$__rate_interval])",
+                  "expr" : "rate(gomon_serve_collection_time_seconds{}[$__rate_interval])",
                   "instant" : false,
                   "key" : "Q-7f6a36dd-dfaf-4e7f-909d-6156e36ae533-1",
                   "legendFormat" : "{{id}} collection time",
@@ -644,7 +660,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "rate(gomon_serve_loki_streams[$__rate_interval])",
+                  "expr" : "rate(gomon_serve_loki_streams{}[$__rate_interval])",
                   "hide" : false,
                   "legendFormat" : "loki streams",
                   "range" : true,
@@ -658,7 +674,7 @@
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "description" : "",
             "fieldConfig" : {
@@ -667,6 +683,7 @@
                      "mode" : "palette-classic"
                   },
                   "custom" : {
+                     "axisBorderShow" : false,
                      "axisCenteredZero" : true,
                      "axisColorMode" : "series",
                      "axisLabel" : "",
@@ -681,6 +698,7 @@
                         "tooltip" : false,
                         "viz" : false
                      },
+                     "insertNulls" : false,
                      "lineInterpolation" : "linear",
                      "lineWidth" : 1,
                      "pointSize" : 3,
@@ -740,7 +758,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "rate(gomon_io_read_bytes[$__rate_interval])",
+                  "expr" : "rate(gomon_io_read_bytes{}[$__rate_interval])",
                   "interval" : "",
                   "legendFormat" : "I/O read {{id}}",
                   "range" : true,
@@ -753,7 +771,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "-rate(gomon_io_write_bytes[$__rate_interval])",
+                  "expr" : "-rate(gomon_io_write_bytes{}[$__rate_interval])",
                   "interval" : "",
                   "legendFormat" : "I/O write {{id}}",
                   "range" : true,
@@ -817,7 +835,7 @@
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "description" : "",
             "fieldConfig" : {
@@ -826,6 +844,7 @@
                      "mode" : "palette-classic"
                   },
                   "custom" : {
+                     "axisBorderShow" : false,
                      "axisCenteredZero" : false,
                      "axisColorMode" : "series",
                      "axisLabel" : "",
@@ -840,6 +859,7 @@
                         "tooltip" : false,
                         "viz" : false
                      },
+                     "insertNulls" : false,
                      "lineInterpolation" : "linear",
                      "lineWidth" : 1,
                      "pointSize" : 3,
@@ -898,14 +918,18 @@
                      "type" : "prometheus",
                      "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
                   },
+                  "disableTextWrap" : false,
                   "editorMode" : "builder",
                   "exemplar" : false,
-                  "expr" : "topk(2, rate(gomon_process_total_seconds[$__rate_interval]))",
+                  "expr" : "topk by() (2, rate(gomon_process_total_seconds[$__rate_interval]))",
+                  "fullMetaSearch" : false,
+                  "includeNullMetadata" : true,
                   "instant" : false,
                   "interval" : "",
                   "legendFormat" : "{{id}}",
                   "range" : true,
-                  "refId" : "A"
+                  "refId" : "A",
+                  "useBackend" : false
                }
             ],
             "title" : "Process CPU Usage",
@@ -915,7 +939,7 @@
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "fieldConfig" : {
                "defaults" : {
@@ -923,6 +947,7 @@
                      "mode" : "palette-classic"
                   },
                   "custom" : {
+                     "axisBorderShow" : false,
                      "axisCenteredZero" : true,
                      "axisColorMode" : "series",
                      "axisLabel" : "",
@@ -937,6 +962,7 @@
                         "tooltip" : false,
                         "viz" : false
                      },
+                     "insertNulls" : false,
                      "lineInterpolation" : "linear",
                      "lineWidth" : 1,
                      "pointSize" : 3,
@@ -996,7 +1022,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "rate(gomon_io_read_bytes[$__rate_interval])",
+                  "expr" : "rate(gomon_io_read_bytes{}[$__rate_interval])",
                   "interval" : "",
                   "legendFormat" : "{{id}}",
                   "range" : true,
@@ -1009,7 +1035,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "-rate(gomon_io_write_bytes[$__rate_interval])",
+                  "expr" : "-rate(gomon_io_write_bytes{}[$__rate_interval])",
                   "hide" : false,
                   "instant" : false,
                   "legendFormat" : "{{id}}",
@@ -1023,7 +1049,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "topk(2, rate(gomon_process_read_actual_bytes[$__rate_interval]))",
+                  "expr" : "topk(2, rate(gomon_process_read_actual_bytes{}[$__rate_interval]))",
                   "interval" : "",
                   "legendFormat" : "{{id}}",
                   "range" : true,
@@ -1036,7 +1062,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : true,
-                  "expr" : "-topk(2, rate(gomon_process_write_actual_bytes[$__rate_interval]))",
+                  "expr" : "-topk(2, rate(gomon_process_write_actual_bytes{}[$__rate_interval]))",
                   "hide" : false,
                   "interval" : "",
                   "legendFormat" : "{{id}}",
@@ -1051,7 +1077,7 @@
          {
             "datasource" : {
                "type" : "prometheus",
-               "uid" : "d9a2f68f-fcbe-4620-a59c-f5573ec33e05"
+               "uid" : "bdgz8a2158gsga"
             },
             "description" : "",
             "fieldConfig" : {
@@ -1060,6 +1086,7 @@
                      "mode" : "palette-classic"
                   },
                   "custom" : {
+                     "axisBorderShow" : false,
                      "axisCenteredZero" : false,
                      "axisColorMode" : "series",
                      "axisLabel" : "",
@@ -1074,6 +1101,7 @@
                         "tooltip" : false,
                         "viz" : false
                      },
+                     "insertNulls" : false,
                      "lineInterpolation" : "linear",
                      "lineWidth" : 1,
                      "pointSize" : 3,
@@ -1134,7 +1162,7 @@
                   },
                   "editorMode" : "code",
                   "exemplar" : false,
-                  "expr" : "topk(5, gomon_process_resident_bytes)",
+                  "expr" : "topk(5, gomon_process_resident_bytes{})",
                   "interval" : "",
                   "legendFormat" : "{{id}}",
                   "range" : true,
@@ -1148,7 +1176,7 @@
          {
             "datasource" : {
                "type" : "loki",
-               "uid" : "b7f627c0-ba17-4fb5-a8c5-11ec04895710"
+               "uid" : "adh0ecsibzg8we"
             },
             "gridPos" : {
                "h" : 21,
@@ -1172,9 +1200,11 @@
                {
                   "datasource" : {
                      "type" : "loki",
-                     "uid" : "b7f627c0-ba17-4fb5-a8c5-11ec04895710"
+                     "uid" : "adh0ecsibzg8we"
                   },
-                  "expr" : "{source=~\"(file|logs|process)\"}",
+                  "editorMode" : "builder",
+                  "expr" : "{source=~\"file|logs|process\"}",
+                  "legendFormat" : "",
                   "queryType" : "range",
                   "refId" : "A"
                }
@@ -1185,8 +1215,7 @@
       ],
       "refresh" : "15s",
       "revision" : 1,
-      "schemaVersion" : 38,
-      "style" : "light",
+      "schemaVersion" : 39,
       "tags" : [
          "gomon",
          "prometheus",
@@ -1215,7 +1244,7 @@
       "timezone" : "",
       "title" : "Gomon Dashboard",
       "uid" : "g-Il9JVVz",
-      "version" : 3,
+      "version" : 12,
       "weekStart" : ""
    },
    "meta" : {
@@ -1236,7 +1265,7 @@
       "canEdit" : true,
       "canSave" : true,
       "canStar" : true,
-      "created" : "2023-05-19T21:59:02-04:00",
+      "created" : "2024-03-31T19:03:29-04:00",
       "createdBy" : "admin",
       "expires" : "0001-01-01T00:00:00Z",
       "folderId" : 0,
@@ -1247,14 +1276,11 @@
       "isFolder" : false,
       "provisioned" : false,
       "provisionedExternalId" : "",
-      "publicDashboardAccessToken" : "",
-      "publicDashboardEnabled" : false,
-      "publicDashboardUid" : "",
       "slug" : "gomon-dashboard",
       "type" : "db",
-      "updated" : "2023-05-19T22:17:25-04:00",
+      "updated" : "2024-04-01T21:53:12-04:00",
       "updatedBy" : "admin",
       "url" : "/d/g-Il9JVVz/gomon-dashboard",
-      "version" : 3
+      "version" : 12
    }
 }
