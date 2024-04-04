@@ -90,7 +90,9 @@ func Upgrade() error {
 		return err
 	}
 
-	if err := command("npm", "", "install"); err != nil {
+	command("rm", "", "-rf", "node_modules")
+
+	if err := command("npm", "", "clean-install"); err != nil {
 		return err
 	}
 
