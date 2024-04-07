@@ -8,21 +8,20 @@
   - [Download the Gomon Data Source](#download-the-gomon-data-source)
   - [Build the Data Source Frontend](#build-the-data-source-frontend)
   - [Build the Data Source Backend](#build-the-data-source-backend)
-  - [Authorize the Data Source Backend](#authorize-the-data-source-backend)
   - [Install the Data Source](#install-the-data-source)
 - [Employing Prometheus, Loki, and Grafana](#employing-prometheus-loki-and-grafana)
   - [Prometheus](#prometheus)
   - [Loki](#loki)
   - [Grafana](#grafana)
 - [Putting it all together](#putting-it-all-together)
-  - [Add Prometheus and Loki Data Sources to Grafana](#add-prometheus-and-loki-data-sources-to-grafana)
-  - [Configure the Prometheus Data Source](#configure-the-prometheus-data-source)
-  - [Configure the Loki Data Source](#configure-the-loki-data-source)
-  - [Install the Gomon Data Source Dashboard to Grafana](#install-the-gomon-data-source-dashboard-to-grafana)
   - [Start the servers](#start-the-servers)
     - [Prometheus](#prometheus-1)
     - [Loki](#loki-1)
     - [Grafana](#grafana-1)
+  - [Add Prometheus and Loki Data Sources to Grafana](#add-prometheus-and-loki-data-sources-to-grafana)
+    - [Configure the Prometheus Data Source](#configure-the-prometheus-data-source)
+    - [Configure the Loki Data Source](#configure-the-loki-data-source)
+  - [Install the Gomon Data Source Dashboard to Grafana](#install-the-gomon-data-source-dashboard-to-grafana)
 - [Visualize](#visualize)
   - [Gomon Data Source Dashboard](#gomon-data-source-dashboard)
   - [Grafana Inter-process and remote host connections node graph](#grafana-inter-process-and-remote-host-connections-node-graph)
@@ -47,11 +46,7 @@ For more information about backend plugins, refer to the documentation on [Grafa
 
 ### Pre-requisites
 
-Building the frontend component depends on the [Node](https://nodejs.org) runtime and the [Yarn classic](https://classic.yarnpkg.com) package manager. Download the Node installer for your system and install. Then use Node’s Package Manager (npm) to install Yarn:
-
-```zsh
-sudo npm install -global yarn
-```
+Building the frontend component depends on the [Node](https://nodejs.org) runtime. Download the Node installer for your system and install.
 
 Building the backend component depends on [Go](https://golang.org). Download [Go's installer](https://golang.org/dl) for your system and install.
 
@@ -59,19 +54,14 @@ The plugin’s build and deployment use the [Mage](https://magefile.org) build t
 
 ### Download the [Gomon Data Source](https://github.com/zosmac/gomon-datasource)
 
-```zsh
-mkdir -p $PLUGINS_DIR
-cd $PLUGINS_DIR
+```sh
 git clone https://github.com/zosmac/gomon-datasource
 cd gomon-datasource
-go mod init github.com/zosmac/gomon-datasource
-go mod tidy
-mage -v upgrade
 ```
 
 ### Build the Data Source Frontend
 
-```zsh
+```sh
 mage -v frontend
 ```
 
@@ -79,37 +69,25 @@ mage -v frontend
 
 Note: `backend` is the default build.
 
-```zsh
+```sh
 mage -v [backend]
-```
-
-### Authorize the Data Source Backend
-
-The backend’s query of process connections requires root authority. Therefore, the backend module must be owned by root with its setuid permission set:
-
-```zsh
-sudo chown 0:0 dist/gomon-datasource_$(go env GOOS)_$(go env GOARCH)
-sudo chmod u+s dist/gomon-datasource_$(go env GOOS)_$(go env GOARCH)
 ```
 
 ### Install the Data Source
 
-The Magefile includes an install target that
+The data source backend plugin is built into the `dist` subdirectory. Copy the contents to the Grafana plugins directory. The backend’s query of process connections requires root authority. Therefore, the backend module must be owned by root with its setuid permission set.
 
-- installs the data source plugin
-- installs the dashboard
+```sh
+cp -R dist/ ${PLUGINS_DIR}/zosmac-gomon-datasource
 
-```zsh
-mage -v install
+cd ${PLUGINS_DIR}/zosmac-gomon-datasource
+sudo chown 0:0 gomon-datasource_$(go env GOOS)_$(go env GOARCH)
+sudo chmod u+s gomon-datasource_$(go env GOOS)_$(go env GOARCH)
 ```
 
 ## Employing Prometheus, Loki, and Grafana
 
-Follow these steps for deploying the three servers that record measurements and observations to facilitate visualization. Building these servers depends on two Javascript applications, the [Node](https://nodejs.org) runtime and the [Yarn classic](https://classic.yarnpkg.com) package manager. Download the current [Node installer](https://nodejs.org/en/download/current/) for your system and install. Then use the Node Package Manager (npm) to install Yarn:
-
-```zsh
-sudo npm install -global yarn
-```
+Follow these steps for deploying the three servers that record measurements ([Prometheus](http://prometheus.io)) and observations ([Loki](https://grafana.com/oss/loki/)) to facilitate visualization ([Grafana](https://grafana.com)).
 
 ### Prometheus
 
@@ -132,7 +110,7 @@ To enable collection, open the `prometheus.yml` configuration file for the Prome
 
 [Loki](https://grafana.com/oss/loki/) is an open-source log aggregation server. Via the data source's HTTP POSTs to the `/loki/api/v1/push` endpoint, Loki receives the data source observations. To install Loki, create a `loki` folder, select appropriate `loki` and `promtail` binaries from the list of Assets on the [Loki releases page](https://github.com/grafana/loki/releases/latest) for your platform, and download. Each binary also requires a configuration file; follow the instructions on the [Loki installation page](https://grafana.com/docs/loki/latest/installation/local) to copy these to the `loki` folder.
 
-```zsh
+```sh
 cd ${LOKI_DIR}
 unzip =(curl -L "https://github.com/grafana/loki/releases/latest/download/loki-$(go env GOOS)-$(go env GOARCH).zip")
 unzip =(curl -L "https://github.com/grafana/loki/releases/latest/download/promtail-$(go env GOOS)-$(go env GOARCH).zip")
@@ -146,6 +124,29 @@ curl -O -L "https://raw.githubusercontent.com/grafana/loki/main/clients/cmd/prom
 To install Grafana, select an appropriate binary from the [Grafana download page](https://grafana.com/grafana/download) for your platform, download, and install.
 
 ## Putting it all together
+
+### Start the servers
+
+#### Prometheus
+
+```sh
+cd ${PROMETHEUS_DIR}
+./prometheus >>prometheus.log 2>&1 &
+```
+
+#### Loki
+
+```sh
+cd ${LOKI_DIR}
+./loki-$(go env GOOS)-$(go env GOARCH) -config.file loki-local-config.yaml >>loki.log 2>&1 &
+```
+
+#### Grafana
+
+```sh
+cd ${GRAFANA_DIR}
+GF_PATHS_PLUGINS=${PLUGINS_DIR} GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=zosmac-gomon-datasource bin/grafana-server web >>grafana.log 2>&1 &
+```
 
 ### Add Prometheus and Loki [Data Sources](http://localhost:3000/datasources/new) to Grafana
 
@@ -165,31 +166,8 @@ Note: while the Data Source's Settings Panel shows the default data source URL, 
 
 ### Install the [Gomon Data Source Dashboard](assets/dashboard.json) to Grafana
 
-```zsh
-curl ${GRAFANA_CRED} -X POST -i -w "\n" -H "Content-Type: application/json" -T ${GOMON_DIR}/assets/dashboard.json "http://localhost:3000/api/dashboards/db"
-```
-
-### Start the servers
-
-#### Prometheus
-
-```zsh
-cd ${PROMETHEUS_DIR}
-./prometheus >>prometheus.log 2>&1 &
-```
-
-#### Loki
-
-```zsh
-cd ${LOKI_DIR}
-./loki-$(go env GOOS)-$(go env GOARCH) -config.file loki-local-config.yaml >>loki.log 2>&1 &
-```
-
-#### Grafana
-
-```zsh
-cd ${GRAFANA_DIR}
-GF_PATHS_PLUGINS=${PLUGINS_DIR} GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=zosmac-gomon-datasource bin/grafana-server web >>grafana.log 2>&1 &
+```sh
+curl ${GRAFANA_CRED} -X POST -i -w "\n" -H "Content-Type: application/json" -T ./assets/dashboard.json "http://localhost:3000/api/dashboards/db"
 ```
 
 ## Visualize
@@ -212,7 +190,7 @@ To download and install [Graphviz](<https://graphviz.org/download/source/>), sel
 
 Note: `gomon-datasource` specifies `-Tsvgz` to the `dot` command. Ensure that the zlib development library is installed on your system, e.g. on Ubuntu `sudo apt install zlib1g-dev`, on Fedora `sudo yum install zlib devel`.
 
-```zsh
+```sh
 tar xzvf =(curl -L "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/7.1.0/graphviz-7.1.0.tar.gz")
 cd graphviz-7.1.0
 ./configure

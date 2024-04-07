@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 var (
@@ -69,13 +68,6 @@ var (
 		return filepath.Join(devDir, "plugins", "zosmac-gomon-datasource")
 	}()
 
-	credential = func() string {
-		if cred, ok := os.LookupEnv("GRAFANA_CRED"); ok {
-			return cred
-		}
-		return "-u admin:admin"
-	}()
-
 	verbose = func() bool {
 		if verb, ok := os.LookupEnv("MAGEFILE_VERBOSE"); ok && verb == "1" { // also set by -v
 			return true
@@ -86,13 +78,13 @@ var (
 
 // Upgrade refreshes dependencies.
 func Upgrade() error {
-	if err := command("npm", "", "update", "--save"); err != nil {
+	if err := command("npm", "update", "--save"); err != nil {
 		return err
 	}
 
-	command("rm", "", "-rf", "node_modules")
+	command("rm", "-rf", "node_modules")
 
-	if err := command("npm", "", "clean-install"); err != nil {
+	if err := command("npm", "clean-install"); err != nil {
 		return err
 	}
 
@@ -101,12 +93,12 @@ func Upgrade() error {
 
 // Frontend builds the web frontend of the data source.
 func Frontend() error {
-	if err := command("npm", "", "run", "build"); err != nil {
+	if err := command("npm", "run", "build"); err != nil {
 		return err
 	}
 
 	// copy assets including images for README.md
-	if err := command("cp", "", "-R", "assets", "dist/"); err != nil {
+	if err := command("cp", "-R", "assets", "dist/"); err != nil {
 		return err
 	}
 
@@ -115,11 +107,11 @@ func Frontend() error {
 
 // Backend builds the go backend of the data source.
 func Backend() error {
-	if err := command("go", "", "generate", "-v", "./pkg"); err != nil {
+	if err := command("go", "generate", "-v", "./pkg"); err != nil {
 		return err
 	}
 
-	if err := command("go", "", "build", "-v", "-o", backend, "./pkg"); err != nil {
+	if err := command("go", "build", "-v", "-o", backend, "./pkg"); err != nil {
 		return err
 	}
 
@@ -139,59 +131,19 @@ func BuildAll() error {
 	return nil
 }
 
-// Install installs the data source plugin.
-func Install() error {
-	// what if custom.ini exists?
-	if err := command("cp", "", "./assets/custom.ini", confDir); err != nil {
-		return err
-	}
-
-	if err := command("rm", "", "-rf", pluginDir); err != nil {
-		return err
-	}
-
-	if err := command("cp", "", "-R", "./dist", pluginDir); err != nil {
-		return err
-	}
-
-	if err := command("curl",
-		credential,
-		"-X", "DELETE",
-		"http://localhost:3000/api/datasources/name/gomon-datasource",
-	); err != nil {
-		return err
-	}
-
-	if err := command("curl",
-		credential,
-		"-X", "POST",
-		"-H", "Content-Type: application/json",
-		"-T", "./assets/dashboard.json",
-		"http://localhost:3000/api/dashboards/db",
-	); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Clean up after yourself
 func Clean() error {
 	fmt.Println("Cleaning...")
 	return os.RemoveAll("dist")
 }
 
-func command(ex, cred string, args ...string) error {
+func command(ex string, args ...string) error {
 	cmd := exec.Command(ex, args...)
 	fmt.Fprintf(os.Stderr, "%s\n", cmd.String())
 
 	// For the frontend build, the webpack bundler (https://webpack.js.org) may default to a hash
 	// that has been deprecated. This NODE_OPTIONS environment variable override reenables it.
 	// cmd.Env = append(os.Environ(), "NODE_OPTIONS=--openssl-legacy-provider")
-
-	if cred != "" { // add credential after echoing out command
-		cmd = exec.Command(ex, append(strings.Fields(credential), args...)...)
-	}
 
 	o := &bytes.Buffer{}
 	e := &bytes.Buffer{}
