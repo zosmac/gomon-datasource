@@ -121,7 +121,7 @@ func nodeFrames(link string, ns, es [][]any, maxConnections int) []*data.Frame {
 		"mainStat",
 		"secondaryStat",
 	}
-	for i := 0; i < maxConnections; i++ {
+	for i := range maxConnections {
 		flds = append(flds, data.FieldTypeString)
 		names = append(names, "detail__connection_"+strconv.Itoa(i))
 	}
@@ -173,7 +173,7 @@ func nodeFrames(link string, ns, es [][]any, maxConnections int) []*data.Frame {
 		Path:        "peer",
 	}
 
-	for i := 0; i < maxConnections; i++ {
+	for i := range maxConnections {
 		edges.Fields[i+6].Config = &data.FieldConfig{
 			DisplayName: fmt.Sprintf("Connection %d", i+1),
 			Path:        fmt.Sprintf("connection %d", i+1),
