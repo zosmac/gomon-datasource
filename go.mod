@@ -4,7 +4,7 @@ go 1.23.5
 
 require (
 	github.com/grafana/grafana-plugin-sdk-go v0.263.0
-	github.com/zosmac/gocore v0.0.0-20250120014007-e6ad8c367e71
+	github.com/zosmac/gocore v0.0.0-20250122165308-c5e9e25d305c
 	github.com/zosmac/gomon v0.0.0-20250120015152-db6ed667b753
 )
 

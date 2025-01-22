@@ -3,11 +3,12 @@
 package plugin
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"net"
 	"runtime"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -120,9 +121,7 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 	for pid := range pt {
 		pids = append(pids, pid)
 	}
-	sort.Slice(pids, func(i, j int) bool {
-		return pids[i] < pids[j]
-	})
+	slices.Sort(pids)
 
 	for _, pid := range pids {
 		p := pt[pid]
@@ -230,9 +229,7 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 	for pid := range include {
 		pids = append(pids, pid)
 	}
-	sort.Slice(pids, func(i, j int) bool {
-		return pids[i] < pids[j]
-	})
+	slices.Sort(pids)
 
 	maxConnections := 0
 	for _, pid := range pids {
@@ -259,13 +256,13 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 					for tt := range tooltip {
 						tts = append(tts, tt)
 					}
-					sort.Slice(tts, func(i, j int) bool {
-						if strings.HasPrefix(tts[i].(string), "parent") {
-							return true
-						} else if strings.HasPrefix(tts[j].(string), "parent") {
-							return false
+					slices.SortFunc(tts, func(a, b any) int {
+						if strings.HasPrefix(a.(string), "parent") {
+							return -1
+						} else if strings.HasPrefix(b.(string), "parent") {
+							return 1
 						} else {
-							return tts[i].(string) < tts[j].(string)
+							return cmp.Compare(a.(string), b.(string))
 						}
 					})
 					if maxConnections < len(tooltip) {
@@ -292,7 +289,7 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 	for depth := range prcss {
 		depths = append(depths, depth)
 	}
-	sort.Ints(depths)
+	slices.Sort(depths)
 
 	for _, depth := range depths {
 		ns = append(ns, cluster(prcss[depth])...)
@@ -305,10 +302,11 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 		ids = append(ids, id)
 	}
 
-	sort.Slice(ids, func(i, j int) bool {
-		a, b, c, d := ids[i][0], ids[j][0], ids[i][1], ids[j][1]
-		return a < b ||
-			a == b && c < d
+	slices.SortFunc(ids, func(a, b [2]Pid) int {
+		return cmp.Or(
+			cmp.Compare(a[0], b[0]),
+			cmp.Compare(a[1], b[1]),
+		)
 	})
 
 	es := make([][]any, 0, len(edges))
@@ -332,7 +330,7 @@ func family(tb process.Table, tr process.Tree, pid Pid) process.Table {
 	for _, pid := range (process.Meta{
 		Tree:  tr,
 		Table: tb,
-		Order: func(node Pid, _ *process.Process) int {
+		Order: func(_ Pid, _ *process.Process) int {
 			return depthTree(tr)
 		}}).All() {
 		pt[pid] = tb[pid]
@@ -376,9 +374,7 @@ func cluster(nodes map[Pid][]any) [][]any {
 		pids = append(pids, pid)
 	}
 
-	sort.Slice(pids, func(i, j int) bool {
-		return pids[i] < pids[j]
-	})
+	slices.Sort(pids)
 
 	var ns [][]any
 	for _, pid := range pids {
