@@ -1,11 +1,11 @@
 module github.com/zosmac/gomon-datasource
 
-go 1.23.5
+go 1.23.6
 
 require (
 	github.com/grafana/grafana-plugin-sdk-go v0.263.0
-	github.com/zosmac/gocore v0.0.0-20250122165308-c5e9e25d305c
-	github.com/zosmac/gomon v0.0.0-20250120015152-db6ed667b753
+	github.com/zosmac/gocore v0.0.0-20250204200709-46fb8898fc20
+	github.com/zosmac/gomon v0.0.0-20250204203339-157b9d8b7ebc
 )
 
 require (
@@ -86,7 +86,7 @@ require (
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
