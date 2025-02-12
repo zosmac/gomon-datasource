@@ -125,7 +125,7 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 		}
 	} else { // only report non-daemon, remote host connected, and cpu consuming processes
 		for pid, p := range tb {
-			if pcpu, ok := prevCPU[pid]; ok && pcpu < currCPU[pid] {
+			if pcpu, ok := prevCPU[pid]; !ok || pcpu < currCPU[pid] {
 				pt[pid] = tb[pid]
 			}
 			if p.Ppid > 1 {
@@ -147,7 +147,7 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 		include[pid] = p
 		for _, conn := range p.Connections {
 			if conn.Self.Pid == 0 || conn.Peer.Pid == 0 || // ignore kernel process
-				conn.Self.Pid == 1 || // ignore launchd processes
+				conn.Self.Pid == 1 || conn.Peer.Pid == 1 || // ignore launchd process
 				conn.Self.Pid == conn.Peer.Pid || // ignore inter-process connections
 				queryPid == 0 && conn.Peer.Pid >= math.MaxInt32 || // ignore data connections for the "all process" query
 				(queryPid > 0 && queryPid != conn.Self.Pid && // ignore hosts and datas of connected processes
@@ -176,10 +176,11 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 					edgeTooltips[id] = map[string]struct{}{}
 				}
 				edgeTooltips[id][fmt.Sprintf(
-					"%s:%s->%s",
+					"%s:%s->%s[%d]",
 					conn.Type,
 					conn.Peer.Name,
 					conn.Self.Name,
+					conn.Self.Pid,
 				)] = struct{}{}
 			} else if conn.Peer.Pid >= math.MaxInt32 { // peer is data
 				peer := conn.Type + ":" + conn.Peer.Name
@@ -207,6 +208,9 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 				)] = struct{}{}
 			} else { // peer is process
 				include[conn.Peer.Pid] = tb[conn.Peer.Pid]
+				for _, pid := range tr.Ancestors(conn.Peer.Pid) {
+					include[pid] = tb[pid] // add ancestor for BuildTree
+				}
 
 				// show edge for inter-process connections only once
 				self, peer := conn.Self.Name, conn.Peer.Name
@@ -222,10 +226,12 @@ func Nodegraph(link string, queryPid Pid) (resp backend.DataResponse) {
 					edgeTooltips[id] = map[string]struct{}{}
 				}
 				edgeTooltips[id][fmt.Sprintf(
-					"%s:%s->%s",
+					"%s:%s[%d]->%s[%d]",
 					conn.Type,
 					self,
+					selfPid,
 					peer,
+					peerPid,
 				)] = struct{}{}
 			}
 		}
@@ -358,6 +364,7 @@ func shortname(tb process.Table, pid Pid) string {
 	return ""
 }
 
+// cluster returns list of nodes in cluster and id of first node.
 func cluster(tb process.Table, nodes map[Pid][]any) [][]any {
 	if len(nodes) == 0 {
 		return [][]any{}
