@@ -5,15 +5,17 @@ package plugin
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
 func nodeFrames(link string, ns, es [][]any, maxConnections int) []*data.Frame {
+	timestamp := time.Now()
+
 	nodes := data.NewFrameOfFieldTypes("nodes", len(ns),
 		data.FieldTypeTime,
 		data.FieldTypeInt64,
-		data.FieldTypeString,
 		data.FieldTypeString,
 		data.FieldTypeString,
 		data.FieldTypeString,
@@ -29,7 +31,6 @@ func nodeFrames(link string, ns, es [][]any, maxConnections int) []*data.Frame {
 		"mainStat",
 		"secondaryStat",
 		"detail__name",
-		"detail__parent",
 		"arc__host",
 		"arc__process",
 		"arc__data",
@@ -72,37 +73,33 @@ func nodeFrames(link string, ns, es [][]any, maxConnections int) []*data.Frame {
 		Path:        "name",
 	}
 	nodes.Fields[5].Config = &data.FieldConfig{
-		DisplayName: "Parent",
-		Path:        "parent",
-	}
-	nodes.Fields[6].Config = &data.FieldConfig{
 		Color:       red,
 		DisplayName: "Host",
 		Path:        "host",
 	}
-	nodes.Fields[7].Config = &data.FieldConfig{
+	nodes.Fields[6].Config = &data.FieldConfig{
 		Color:       blue,
 		DisplayName: "Process",
 		Path:        "process",
 	}
-	nodes.Fields[8].Config = &data.FieldConfig{
+	nodes.Fields[7].Config = &data.FieldConfig{
 		Color:       yellow,
 		DisplayName: "Data",
 		Path:        "data",
 	}
-	nodes.Fields[9].Config = &data.FieldConfig{
+	nodes.Fields[8].Config = &data.FieldConfig{
 		Color:       magenta,
 		DisplayName: "Socket",
 		Path:        "socket",
 	}
-	nodes.Fields[10].Config = &data.FieldConfig{
+	nodes.Fields[9].Config = &data.FieldConfig{
 		Color:       cyan,
 		DisplayName: "Kernel",
 		Path:        "kernel",
 	}
 
 	for i, n := range ns {
-		nodes.SetRow(i, n...)
+		nodes.SetRow(i, append([]any{timestamp}, n...)...)
 	}
 
 	flds := []data.FieldType{
@@ -181,7 +178,7 @@ func nodeFrames(link string, ns, es [][]any, maxConnections int) []*data.Frame {
 	}
 
 	for i, e := range es {
-		edges.SetRow(i, e...)
+		edges.SetRow(i, append([]any{timestamp}, e...)...)
 	}
 
 	return []*data.Frame{nodes, edges}
