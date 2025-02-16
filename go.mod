@@ -1,11 +1,11 @@
 module github.com/zosmac/gomon-datasource
 
-go 1.23.6
+go 1.24.0
 
 require (
 	github.com/grafana/grafana-plugin-sdk-go v0.266.0
-	github.com/zosmac/gocore v0.0.0-20250208150610-d9a0deb6ab8d
-	github.com/zosmac/gomon v0.0.0-20250215174247-09da5601287e
+	github.com/zosmac/gocore v0.0.0-20250215235941-b4ecec07c52d
+	github.com/zosmac/gomon v0.0.0-20250216003035-fa8d79db4f1f
 )
 
 require (
@@ -84,12 +84,12 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
-	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/mod v0.23.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/tools v0.29.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
