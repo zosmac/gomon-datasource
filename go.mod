@@ -4,8 +4,8 @@ go 1.24.0
 
 require (
 	github.com/grafana/grafana-plugin-sdk-go v0.266.0
-	github.com/zosmac/gocore v0.0.0-20250215235941-b4ecec07c52d
-	github.com/zosmac/gomon v0.0.0-20250216003035-fa8d79db4f1f
+	github.com/zosmac/gocore v0.0.0-20250219174039-a0df02b0bbd9
+	github.com/zosmac/gomon v0.0.0-20250219200918-6faa85307261
 )
 
 require (
@@ -61,7 +61,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
-	github.com/prometheus/client_golang v1.20.5 // indirect
+	github.com/prometheus/client_golang v1.21.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect

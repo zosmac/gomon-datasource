@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -43,9 +43,6 @@ var (
 	yellow    = map[string]any{"mode": "fixed", "fixedColor": "yellow"}
 	magenta   = map[string]any{"mode": "fixed", "fixedColor": "magenta"}
 	cyan      = map[string]any{"mode": "fixed", "fixedColor": "cyan"}
-
-	// prevCPU is used to limit reporting only of processes that consumed CPU since the previous measurement.
-	prevCPU = map[Pid]time.Duration{}
 )
 
 // color defines the color for grafana nodes.
@@ -130,25 +127,14 @@ func (query Query) BuildGraph(
 	ns = append(ns, cluster(tb, datas)...)
 
 	// add the edges
-	// var ids [][2]Pid
-	// for id := range edges {
-	// 	ids = append(ids, id)
-	// }
-
-	// slices.SortFunc(ids, func(a, b [2]Pid) int {
-	// 	return cmp.Or(
-	// 		cmp.Compare(a[0], b[0]),
-	// 		cmp.Compare(a[1], b[1]),
-	// 	)
-	// })
-
-	// var es [][]any
-	// for _, id := range ids {
-	// 	es = append(es, edges[id])
-	// }
-
 	var es [][]any
-	for _, edge := range edges {
+	// for id, edge := range edges { // does sorting improve graph consistency?
+	for _, edge := range gocore.Ordered(edges, func(a, b [2]Pid) int {
+		return cmp.Or(
+			cmp.Compare(a[0], b[0]),
+			cmp.Compare(a[1], b[1]),
+		)
+	}) {
 		es = append(es, edge)
 	}
 
@@ -216,35 +202,24 @@ func (query Query) ProcEdge(tb process.Table, self, peer Pid) []any {
 }
 
 // cluster returns list of nodes in cluster and id of first node.
-func cluster(_ process.Table, nodes map[Pid][]any) [][]any {
+func cluster(tb process.Table, nodes map[Pid][]any) [][]any {
 	if len(nodes) == 0 {
 		return [][]any{}
 	}
 
-	// pids := make([]Pid, 0, len(nodes))
-	// for pid := range nodes {
-	// 	pids = append(pids, pid)
-	// }
-
-	// slices.SortFunc(pids, func(a, b Pid) int {
-	// 	if a >= 0 && a < math.MaxInt32 { // processes
-	// 		if n := cmp.Compare(
-	// 			filepath.Base(tb[a].Executable),
-	// 			filepath.Base(tb[b].Executable),
-	// 		); n != 0 {
-	// 			return n
-	// 		}
-	// 	}
-	// 	return cmp.Compare(a, b)
-	// })
-
-	// var ns [][]any
-	// for _, pid := range pids {
-	// 	ns = append(ns, nodes[pid])
-	// }
-
 	var ns [][]any
-	for _, node := range nodes {
+	// for _, node := range nodes { // does sorting improve graph consistency?
+	for _, node := range gocore.Ordered(nodes, func(a, b Pid) int {
+		if a >= 0 && a < math.MaxInt32 { // processes
+			if n := cmp.Compare(
+				filepath.Base(tb[a].Executable),
+				filepath.Base(tb[b].Executable),
+			); n != 0 {
+				return n
+			}
+		}
+		return cmp.Compare(a, b)
+	}) {
 		ns = append(ns, node)
 	}
 
