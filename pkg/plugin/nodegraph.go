@@ -68,7 +68,7 @@ func color(conn process.Connection) []any {
 // Nodegraph produces the process connections node graph.
 func Nodegraph(link string, queryPid Pid) backend.DataResponse {
 	return backend.DataResponse{
-		Frames: process.Nodegraph[[]any, any, []*data.Frame](Query{pid: queryPid, link: link}),
+		Frames: process.Nodegraph(Query{pid: queryPid, link: link}),
 	}
 }
 
